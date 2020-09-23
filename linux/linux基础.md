@@ -111,4 +111,121 @@
     硬链接：不占用磁盘空间,创建硬链接对应文件会有一个磁盘i节点计数的增加，否则减少,只有文件才能创建硬链接
         ln a a.hard:
 
+    9. 文件或目录属性
+        wc: 获取文本文件信息 行数，单词数 字节数 文件名
+        od: 查看二进制文件 
+            -t 参数：
+                c: ascii数码
+                d：有符号十进制数
+                f: 浮点数
+                o: 八进制
+                u: 无符号十进制数
+                x: 十六进制数字
+        du: 查看当前目录大小
+            -h 以人能看懂的方式显示
+        df: 查看磁盘使用量
+            -h 以人能看懂的方式显示
+    
+    10. which命令
+        查找使用的命外部令在上面位置
+        从bin目录搜索
+        内建命令像cd查不到
+
+    11. 修改文件权限
+        whoami: 查看我是谁
+        1. 文字设定法
+            chmod [who] [+|-|=] [mode] 文件名
+                who:
+                    文件所有者:     u
+                    文件按所属组:   g
+                    其他人:        o
+                    所有人(默认)：        a
+                +: 添加权限
+                -：减少权限
+                =：覆盖原来的权限
+                mode:
+                    r: 读
+                    w: 写
+                    x: 执行
+            实例
+            chmod o+w temp
+        2. 数字设定法
+            -: 没有权限
+            r: 4
+            w: 2
+            765
+            7   rwx 文件所有者
+            6   rw- 文件所属的组
+            5   r-x 其他人
+            示例：
+            chmod -001 tmp
+    12. 修改文件所有者和所属组
+        chown 新的所有者 文件名
+        chown 新的所有者:所属组 文件名
+        需要管理员权限
+        chgrp 所有组 文件名
+        注意: 目录必须有执行权限x
+    
+    13. 文件的查找和检索
+        1. 按照文件名查找
+        find 查找的目录 -name "文件名字"
+        示例：
+        find /home/snowlands -name "hello.c"
+        find /home/snowlands -name "hello.*"
+        find /home/snowlands -name "hello.?"
+        2. 按照文件大小查找
+        find 目录 -size[+|-|=]大小
+        +: 大于
+        -：小于
+        =: 等于
+        实例：
+        find ~ +10K
+        find ~ -size +10M -size -100M
+        3. 按照文件类型dlbcsp查找
+        find 文件查找目录 -type [f|d|l|b|c|s|p]
+        示例:
+        find ~ -type f
+        4. 按照文件内容查找
+        grep -r "查找内容" 查找路径
+        -r: 递归查找
+        示例：
+        grep -r "stdio.h" ~
+
+    14. 安装软件
+        1. apt-get
+            1. 安装
+                apt-get install 软件名
+                示例：
+                sudo apt-get install tree
+            2. 移除
+                apt-get remove 软件名
+                示例：
+                sudo apt-get remove tree
+            3. 更新
+                1. 从官方服务器（软件源）更新软件列表
+                apt-get update
+                2. 安装软件列表更新软件
+                apt-get upgrade
+            4. 清理下载的安装包
+                apt-get clean
+        2. aptitude
+            同上
+        3. dpkg
+            1. 安装
+                dpkg -i 安装包
+            2. 卸载
+                dpkg -r 软件名
+        4. 源码安装
+            1. 下载源码, 解压缩
+            2. 进入目录
+            3. ./config
+            4. make
+            5. make install
+            6. 删除
+            make distclean
+            (以上步骤看情况)
+
+
+                
+
 
