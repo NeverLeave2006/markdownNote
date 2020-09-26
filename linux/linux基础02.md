@@ -39,10 +39,97 @@ sda5-:扩展分区
         -C: 指定目录
         压缩包文件最好指定正确的名称
     rar:
+        必须先安装该软件
+        参数
+        a: 压缩
+        x: 解压缩
+        示例:
+        压缩：
+            rar a 生成的压缩文件名字(temp) 压缩文件或者目录
+        解压缩：
+            rar x 要解压的文件 目标目录
     zip:
-3. 进程隔离
-4. 网络隔离
+        参数:
+        压缩：
+            zip 压缩包的名字 压缩的文件或者目录
+        解压缩:
+            unzip 压缩包的名字: 释放到当前目录
+            unzip 压缩包的名字 -d 解压目录
+
+    总结: 相同之处
+    tar/rar/zip 参数 生成的压缩文件的名字 压缩的文件或者目录 --- 压缩时候的语法
+    tar/rar/unzip 参数 压缩包的名字 参数(rar没有参数) 解压缩目录 --- 解压缩语法
+3. 进程管理
+    who: 查看当前在线用户状况
+        用户名 设备终端 登录到系统时间
+        设备终端:
+        tty1-tty6: 文字界面
+        tty7: 图形化终端
+        通过ctrl+alt+f1-f7切换
+    ps: 查看进程信息
+        参数：
+            a: 列出所有进程
+            u: 更详细信息，包括用户，cpu，内存使用率
+            x: 查看没有终端的应用程序
+        使用管道重定向 |(管道符号)
+        ps aux | grep batch: 查找和batch有关的进程，包含这个命令自己
+    kill: 杀死进程
+        kill -9 进程号pid: 杀死对于进程
+        参数：
+        l: 查看进程信号（64个）
+        -SIGKILL(9) 杀死进程
+    env: 查看当前进程的环境变量
+        env | grep PATH: 查看和PATH相关的内容
+    > linux下环境变量的格式: KEY=value1:value2:value3:value4
+        top: linux的任务管理器，动态
+4. 网络管理
+    ifconfig: 查看网络信息
+        eth0: 当前电脑的网卡
+            mac: 硬件地址
+            广播地址：网段地址
+        lo: 本地换回
+    ping: 测试和远程ip能不能通信
+        -c 4: 指定ping4条
+        -i 5: 间隔多少秒给个回馈
+    nslookup: 查看域名对应ip
 5. ftp
+    用户管理:
+        adduser: 添加用户脚本
+            adduser 用户名: 添加用户，用户组默认和用户名一样
+
+        useradd: 添加用户命令
+            -s: 指定命令解析器 /bin/bash
+            -g: 创建用户所属的组, 没有用groupadd创建
+            -d: 指定用户家目录
+            -m: 如果没有目录就创建一个
+        groupadd 用户组名称: 创建用户组
+        passwd 用户名: 修改指定用户的密码, 用户名不写默认修改当前用户密码
+        sudo passwd: 修改root用户
+
+        deluser 用户名: 删除用户
+        userdel -r 用户名: 删除用户，同时删除用户所在家目录
+
+        查看当前系统所有用户的配置文件
+        /etc/passwd
+    
+    ftp服务器搭建: --使用vsftp
+    ftp服务器，负责文件上传和下载
+
+    1. 服务器端:
+        1. 修改配置文件
+        /etc/vsftpd.conf
+        anonymous_enable=YES    允许匿名登录
+        local_enable=YES        允许本地用户登录
+        write_enable=YES        实名用户拥有写权限
+        local_umask=022         本地掩码
+        anon_upload_enable=YES  匿名用户可以象ftp服务器上传数据
+        anno_mkdir_write_enable=YES 匿名用户可以在ftp服务器上面上传数据
+        2. 重启服务
+        sduo vsftpd restart
+    2. 客户端:
+        1. 实名用户登录
+        2. 匿名用户登录
+        3. lftp客户端访问ftp服务器
 6. nfs
 7. ssh
 8. scp
