@@ -125,13 +125,74 @@ sda5-:扩展分区
         anon_upload_enable=YES  匿名用户可以象ftp服务器上传数据
         anno_mkdir_write_enable=YES 匿名用户可以在ftp服务器上面上传数据
         2. 重启服务
-        sduo vsftpd restart
+        sudo service vsftpd restart
     2. 客户端:
         1. 实名用户登录
+        ftp + IP(server)
+        输入用户名 密码
+
+        文件的上传和下载
+            上传: put file
+            下载: get file
         2. 匿名用户登录
-        3. lftp客户端访问ftp服务器
-6. nfs
+        ftp + serverIP
+        用户名 snonymous
+        密码 直接回车
+
+        不允许匿名用户在任意目录切换
+
+        3. lftp客户端访问ftp服务器, 可以操作目录
+            安装: sudo apt-get install lftp
+            匿名: 
+            lftp ip
+            login
+            实名：
+            lftp 用户名@ip
+            输入服务器密码
+
+            lcd: 切换目录
+            put:  上传文件
+            mput: 同时上传多个文件
+            get: 下载文件
+            mget: 同时下载多个文件
+            mirror: 下载整个目录及其子目录
+            mirror -R: 上传整个目录及其子目录
+6. nfs: 网络共享服务器
+    安装:
+        sudo apt-get install nfs-kernel-server
+    1. 服务器端
+        1. 创建共享目录
+            mkdir dir
+        2. 修改配置文件 /etc/exports
+            共享目录路径 ip网段地址(* 所有人) (访问权限, sync实时更新)
+            示例:
+            /home/Robin/NfsShare *(rw, sync)  
+        3. 重启服务
+            sudo service nfs-kernel-server restart
+    2. 客户端:
+        1. 挂载服务器共享目录
+            mount serverIP:sharedir /mnt
+            cd /mnt 切换到挂载的共享目录
+
 7. ssh
+    1. 服务器端
+        sudo apt-get install openssh-server
+        查看ssh是否安装：
+            sudo aptitude show openssh-server
+    2. 客户端
+        登陆:
+            ssh 用户名@ip:port
+            第一次登录需要yes保存rsa
+        退出:
+            logout
+
 8. scp
+    scp  == super copy 超级拷贝
+    使用命令前提条件 openssh-server
+    使用格式:
+        scp -r 目标用户名@目标主机IP地址:/目标文件的绝对路径 /保存到本机的绝对/相对路径
+        示例:
+        scp -r itcast@192.168.1.100:/home/itcast/QQ_dir ./mytest/300
+        拷贝目录需要加参数-r
 9. 其他命令
 10. 关机重启
