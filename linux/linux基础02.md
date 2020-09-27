@@ -195,4 +195,31 @@ sda5-:扩展分区
         scp -r itcast@192.168.1.100:/home/itcast/QQ_dir ./mytest/300
         拷贝目录需要加参数-r
 9. 其他命令
+    1. 终端翻页
+        shift + PageUp -> 上翻页
+        shift + PageDown -> 下翻页
+    2. 清屏
+        clear
+        Ctrl + L
+
+    3. 创建终端
+        Ctrl + Alt + T(Ubuntu)
+        Ctrl + Shift + T (添加新标签页)
+
+    4. 看手册
+        man man: 共九个章节
+        1. 可执行程序或者shell命令
+        2. 系统调用 内核提供的函数
+        3. 库调用(程序库中提供的函数)
+        4. 特殊文件
+        5. 文件格式和规范
+        6. 游戏
+        7. 杂项
+        8. 系统管理命令
+        9. 内核例程
+
+    5. 设置或者查看别名
+        查看: alias
+        设置：alias pag='ps aus|grep '
 10. 关机重启
+
