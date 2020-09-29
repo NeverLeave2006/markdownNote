@@ -135,3 +135,54 @@ gcc xxx -D DEBUG
         -O 优化0-3个等级，3最高，一般2，默认1
         -Wall 输出警告信息
         -g 生成调试信息, 文件变大
+
+    3. 静态库的制作和使用
+        1. 命名规则
+            lib+库名+.a
+            libMyTest.a
+        2. 制作步骤
+            1. 生成.o文件(gcc -c)
+            2. 将生成的.o文件打包 ar rcs + 静态库的名字(libMyTest.a)+所有生成的.o
+        3. 发布和使用静态库
+            1. 发布静态库
+            lib/xxx.a
+            2. 头文件
+            include
+            3. 使用
+            gcc src.c lib/xxx.a -Iinclude地址
+            或者
+            gcc 源码文件 -Iinclude文件夹 -L lib文件夹 l 库名字(掐头去尾) -o 生成的文件名
+            gcc src.c -Iinclude -L lib -l MyCalc -o myapp
+
+            查看静态库内容
+            nm libXXX.a
+            查看可执行文件内容
+            nm myApp
+            T 表示代码区
+        4. 优缺点
+        优点:
+            发布程序的时候不需要提供库文件
+            应用程序执行的时候加载速度非常快
+        缺点:
+            执行文件大
+            库升级需要重新编译
+    
+    4. 共享库的制作
+        1. 命名规则
+            1. lib+名字+.so
+        2. 制作步骤
+            1. 生成位置无关的代码(生成地址空间位置无关的.o)
+            gcc -fPIC -c *.c -I../include
+            2. 将.o打包成共享库(动态库)
+            gcc -shared libMyCalc.so *.o -Iinclude
+        3. 发布和使用共享库
+            发布lib/xxx.so include文件
+            使用
+            gcc main.c 动态库文件 -o 输出文件 -Iinclude
+            gcc main.c -Iinclude -L./lib -lMyCalc -o myApp
+
+            ldd  可执行文件: 查看可执行文件所有依赖的共享库
+            把动态库so文件放到系统lib目录里面
+        4. 解决程序执行时动态库无法被加载的问题
+        
+    
