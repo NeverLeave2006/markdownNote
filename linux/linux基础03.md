@@ -132,9 +132,10 @@ xxx
 ```shell
 gcc xxx -D DEBUG
 ```
-        -O 优化0-3个等级，3最高，一般2，默认1
-        -Wall 输出警告信息
-        -g 生成调试信息, 文件变大
+
+-O 优化0-3个等级，3最高，一般2，默认1
+-Wall 输出警告信息
+-g 生成调试信息, 文件变大
 
     3. 静态库的制作和使用
         1. 命名规则
@@ -142,7 +143,7 @@ gcc xxx -D DEBUG
             libMyTest.a
         2. 制作步骤
             1. 生成.o文件(gcc -c)
-            2. 将生成的.o文件打包 ar rcs + 静态库的名字(libMyTest.a)+所有生成的.o
+            2. 将生成的.o文件打包 ar rcs + 静态库的名字(libMyTest.a) *.o
         3. 发布和使用静态库
             1. 发布静态库
             lib/xxx.a
@@ -184,5 +185,20 @@ gcc xxx -D DEBUG
             ldd  可执行文件: 查看可执行文件所有依赖的共享库
             把动态库so文件放到系统lib目录里面
         4. 解决程序执行时动态库无法被加载的问题
-        
+            a. 放在系统lib库目录(不推荐)
+            b. 配置LD_LIBRARY_PATH
+
+            ```shell
+            export LD_LIBRARY_PATH=./lib
+            ```
+
+            把以上命令写到配置文件~/.bashrc下面
+            改完了要重启终端
+            更新sudo ldconfig -v
+
+        动态库优缺点:
+            优点: 体积小
+                  更新方便(接口不变)
+                  需要把动态库提供给用户
+
     
