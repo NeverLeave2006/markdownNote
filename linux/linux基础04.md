@@ -7,16 +7,22 @@
 1. l: 查看源代码(10行)
 l select_sort.c:20
 查看select_sort.c中第20行的内容
+l 行号
+l 函数名
 
 2. b: 打断点
 b 22
-b 15 if i==15: 在i=15的时候停止
+b 15 if i==15: 条件断点在i=15的时候停止
 
 3. i: 查看断点信息
 i b
+info b
+
+删除断点
+d 断点编号
 
 4. 执行程序
-start: 开始执行，执行一步
+start: 开始执行，执行一行代码
 run: 运行到断点 
 n: next单步调试
 c: continue继续，直到断点
@@ -301,3 +307,8 @@ int main()
     SEEK_END
 
 5. close
+
+
+复制文件
+read write
+getc putc:有缓冲区, 效率高
