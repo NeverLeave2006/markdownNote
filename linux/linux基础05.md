@@ -126,3 +126,183 @@ stat函数
     穿透(追踪)函数 -- 软连接指向的文件
 lstat函数
     不穿透(追踪) 只返回软连接信息
+```cpp
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int agrc,char* argv[1])
+{
+    if(argc<2){
+        printf("./a.out filename\n");
+        exit(1);
+    }
+    struct stat st;
+    // struct stat* st;
+    stat(argv[1],&st);
+    if(ret==-1){
+        perror("stat");
+        exit(1);
+    }
+    //获取文件大小
+    int size=(int)st.st_size;
+
+    lstat(argv[1],&st);
+    if(ret==-1){
+        perror("stat");
+        exit(1);
+    }
+    //获取文件大小
+    int lsize=(int)st.st_size;
+    printf("file size = %d\n",lsize);
+}
+```
+
+一些系统文件函数介绍:
+
+access
+测试某个权限是否有某种权限
+int access(const char* pathname,int mode)
+mode权限类别
+W_OK: 写权限
+R_OK：读权限
+X_OK：执行权限
+F_OK：文件存在
+返回：0：所有权限通过检查
+     -1：有权限被禁止
+
+chmod
+改变文件类型
+int chmod(const char *path,mode_t mode);
+int fchmod(int fd,mode_t mode);
+
+strtol函数
+long int strtol(const char *nptr,char **endptr,int base);
+字符转进制数
+
+chown
+
+truncate
+
+link
+
+symlink
+
+readlink
+
+unlink
+用于制作临时文件, 自动删除释放文件
+int unlink(const char * pathname)
+```cpp
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main()
+{
+    int fd=open("tempfile",O_CREAT|O_RDWR,0644);
+    if(fd==-1){
+        perror("open");
+        exit(1);
+    }
+
+    //删除临时file
+    int ret=unlink("tempfile");
+
+    //因为文件已经打开了，所以还可以写，关闭文件后就删除了
+    write(fd,"hello\n",6);
+
+    //重置文件指针
+    lseek(fd,0,SEEK_SET);
+    //read file
+    char buf[24]={0};
+    int len=read(fd,buf,sizeof(buf));
+
+    //将读出的内容写到屏幕上
+    write(1,buf,len);
+    
+    //close file
+    close(fd);
+    return 0;
+}
+```
+
+rename 文件重命名函数
+int rename(const char *oldpath,const char *newpath);
+
+chadir 修改当前进程的路径,不是shell的当前路径
+
+getcwd 获取当前进程工作目录
+
+mkdir 创建目录
+
+rmdir 删除一个空目录
+
+opendir: 库函数
+
+readdir: 库函数
+
+closedir
+
+递归读目录获取文件个数
+```cpp
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int getFileNum(char* root){
+    //open dir
+    DIR* dir=NULL;
+    dir=opendir(root);
+    if(dir==NULL){
+        perror("opendir");
+        exit(1);
+    }
+
+    //遍历当前打开的目录
+    struct dirent* ptr=NULL;
+    char path[1024]={0};
+    int total=0;
+    while((ptr=readdir(dir))!=NULL){
+        //过滤. 和..
+        if(strcmp(ptr->d_name,".")==0||strcmp(ptr->d_name,"..")==0)
+        {
+            continue;
+        }
+        //如果说目录
+        if(ptr->d_type==DT_DIR)
+        {
+            //递归 读目录
+            sprintf(path,"%s/%s",root,ptr->d_name);
+            total+=getFileNum(path);
+        }
+        //如果是普通文件
+        if(ptr->d_type==DT_REG)
+        {
+            total++;
+        }
+    }
+    closedir(dir);
+    return total;
+}
+
+int main(int argc,char* argcv[])
+{
+    int (argc<2>){
+        printf("./a.out dir\n");
+        exit(1);
+    }
+    int total=getFileNum(argv[1]);
+    printf("%s has file numbers %d\n",argv[1],total);
+    return 0;
+}
+```
