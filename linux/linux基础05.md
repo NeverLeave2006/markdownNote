@@ -306,3 +306,29 @@ int main(int argc,char* argcv[])
     return 0;
 }
 ```
+
+文件描述符的复制函数
+dup
+int dup(int oldfd);
+返回新的文件描述符
+
+dup2
+int dup2(int oldfd,int newfd);
+把oldfd复制给newfd
+如果new被打开, 先关掉new
+如果是同一个文件描述符，直接返回old
+
+
+fctnl
+改变已经打开的文件属性
+只读->追加添加 O_APPEND
+int fctnl(int fd,int cmd)
+int fctnl(int fd,int cmd,long arg)
+int fctnl(int fd,int cmd,struct flock* lock)
+cmd:
+    F_DUPFD: 复制一个现有的文件描述符
+    F_GETFD: 获取文件描述符标记
+    F_SETFD: 设置文件描述符标记
+    F_GETFL: 获取文件状态标记
+    F_SETFL: 设置文件状态标记，可以修改的标识: O_APPEND,O_NONBLOCK
+
