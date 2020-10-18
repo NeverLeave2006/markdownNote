@@ -91,3 +91,102 @@ int main(){
     return 0;
 }
 ```
+
+getenv函数:
+    获取环境变量的值
+    char *getenv(const char *name);
+    char *secure_getenv(const char *name);
+    成功，返回环境变量的值, 失败NULL那么不存在
+    练习: 编程实现getenv函数
+
+setenv函数:
+    设置环境变量的值
+    int setenv(const char* name,const char *value,int overwrite);
+    成功0, 失败1
+    overwirte：
+        1: 覆盖
+        2: 添加
+
+unsetenv函数:
+    int unsetenv(const char *name);
+
+
+进程控制
+    fork函数
+    创建进程: 运行一个可执行函数
+
+    fork 用于创建子进程
+    fork 函数返回值 
+        1. 返回子进程pid(非负整数) 父进程
+        2. 返回0                  子进程
+    循环创建子进程的架构
+
+代码示例
+```cpp
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main()
+{
+    pid_t pid;
+    printf("XXXXXXXXXX\n");
+    pid=fork();
+    if(pid==-1){
+        perror("fork error;");
+        exit(1);
+    }else if(pid==0){
+        printf("I'm child, pid=%u\n ppid=%u\n",getpid(),getppid());
+    }else{
+        printf("I'm parent, pid=%u\n",getppid());
+    }
+    printf("YYYYYYYYYYYYY");
+
+    return 0;
+}
+
+```
+
+循环创建n个子进程
+```cpp
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main()
+{
+    pid_t pid;
+    printf("XXXXXXXXXX\n");
+    int i=0;
+
+    for(i=0;i<50;i++>){
+        pid=fork();
+        if(pid==-1){
+            perror("fork error;");
+            exit(1);
+        }else if(pid==0){
+            break;
+        }
+        
+    }
+    if(i<5){
+        sleep(i);
+        printf("I am %dth child\n",i+1,getpid());
+    }else{
+        sleep(i);
+        printf("I am parent\n",i+1,getpid());
+    }
+    
+    printf("YYYYYYYYYYYYY");
+
+    return 0;
+}
+
+```
+
+
+getuid: 获取实际ID
+
+geteuid: 获取有效id
+
+
