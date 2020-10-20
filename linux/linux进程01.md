@@ -189,4 +189,12 @@ getuid: 获取实际ID
 
 geteuid: 获取有效id
 
+父子进程共享
+父子进程共用的: 全局变量, .data .text 栈，堆，环境变量 用户id 宿主目录 进程工作目录 信号处理方式
+父子进程不同的: 进程ID fork返回值 父进程id 进行运行时间 闹钟 未决信号集
+
+gdb调试
+
+set follow-fork-mode child 跟踪子进程
+set follow-fork-mode parent 跟踪父进程
 
