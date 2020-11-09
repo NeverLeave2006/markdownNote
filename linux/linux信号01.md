@@ -102,3 +102,47 @@ if(ret==-1){
 }
 ```
 kill函数和kill命令效果相同
+
+abort();直接接受进程
+raise(SIGINT);发信号，同上同ctrl+c
+
+软件条件产生信号
+**每个进程有且只要一个定时器**
+alarm函数
+alarm()
+取消定时器alarm(0),返回闹钟余下秒数
+
+```cpp
+#include <stdio.h>
+#include <unistd.h>
+
+int main()
+{
+    int i;
+    alarm(1);//定时1秒
+    for(int i=0;;i++){
+        printf("%d",i);
+    }
+    return 0;
+}
+```
+
+实际时间=系统时间+用户时间+等待时间
+
+settimmer函数
+设置定时器(闹钟), 可以替代alarm函数，精度微妙us,可以实现周期定时
+返回值显示函数是否调用成功
+成功返回0,失败返回-1
+
+int setitimer(int which,const struct itimerval * new value,struct itimerval *old value);
+which: 定时开始时间
+newvalue:
+oldvalue:定时剩余的
+
+which指定定时方式
+ITIMER_REAL: 自然定时
+ITIMER_VIRTURE: 虚拟，用户空间计时 
+ITIMER_PROF: 运行即使
+
+
+
