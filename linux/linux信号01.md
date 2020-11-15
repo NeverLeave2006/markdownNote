@@ -140,9 +140,47 @@ newvalue:
 oldvalue:定时剩余的
 
 which指定定时方式
-ITIMER_REAL: 自然定时
-ITIMER_VIRTURE: 虚拟，用户空间计时 
-ITIMER_PROF: 运行即使
+ITIMER_REAL: 自然定时 alarm信号
+ITIMER_VIRTURE: 虚拟，用户空间计时 signVT信号
+ITIMER_PROF: 运行即使 用户空间+内核空间的计时
 
+itimerval结构体
+struct itimerval {
+    struct timeval it_interval;//下一次定时的值
+    struct timeval it_value;   //当前定时的值，微秒
+}
 
+```cpp
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/time.h>
+
+unsigned int my_alarm(unsigned int sec){
+    struct itimercal it,oldit;
+    int ret;
+
+    it.t_value.tv_sec=sec;
+    it.t_value.tv_usec=0;
+    it.it_interval.tv_sec=0;
+    it.it_interval.tv_usec=0;
+
+    ret=setitimer(ITIMER_REAL,&it,&oldit);
+    if(ret==-1){
+        perror("setitimer");
+        exit(1);
+    }
+    return oldit.it_value.tv_sec;
+}
+
+int main()
+{
+    int i;
+    my_alarm(1);
+
+    for(int i=0;;i++){
+        printf("%d\n",i);
+    }
+    return 0;
+}
+```
 
