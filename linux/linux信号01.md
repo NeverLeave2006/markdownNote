@@ -184,3 +184,9 @@ int main()
 }
 ```
 
+setitimer捕捉信号
+signal函数 捕捉信号
+sighandler_t signal(int signum, sighandler_t handler);
+```
+signal(SIGALRM,myfunc);//注册信号捕捉函数
+```
