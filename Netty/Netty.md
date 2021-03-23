@@ -53,3 +53,103 @@ FileChannel类主要用来对本地文件进行IO操作，常见的方法有
 2. 可以将一个普通Buffer转成制度Buffer
 3. NIO还提供了MapperedbyteBuffer, 可以让文件直接在内存(堆外的内存)中进行修改，而如何同步文件由NIO来完成。
 4. 前面我们讲的读写操作，都是通过一个Buffer完成的，NIO还支持通过多个Buffer(即Buffer数组)完成读写操作，即Scattering和Gatering
+
+# Selector(选择器)
+基本介绍
+1. Java的NIO,用非阻塞的IO方式。可以用一个线程，处理多个的客户端连接，就会使用到selector
+2. Selector能够检测多个注册的通道上是否有事件发生(注意: 多个Channel以事件的方式可以注册到同一个Selector),如果有事件发生，便获取事件然后针对事件进行相应的处理。这样就可以只用一个单线程去管理多个通道，也就是管理多个连接和请求。
+3. 只有在连接真正有读写事件发生时，才会进行读写，就大大减少了系统开销，而且不必为每个连接都创建一个线程，不用去维护多个线程
+4. 避免了多线程之间的上下文切换导致的开销
+
+特点再说明
+1. Netty的IO线程NioEventLoop聚合了Selector(选择器，也叫多路复用器), 可以同时并发处理成百上千个客户端连接。
+2. 当线程从客户端Socket通道进行读写认为时，若没有数据可用时，该线程可以进行其他任务。
+3. 线程通常将非阻塞IO的空闲时间用在其他通道上执行IO操作，所以单独的线程可以管理多个输入和输出通道
+4. 由于读写操作都是非阻塞的，这样就可以充分提升IO线程的运行效率，避免由于频繁I/O阻塞导致的线程挂起
+5. 一个I/O线程可以并发处理N个客户端连接和读写操作，这从根本上解决了传统同步阻塞I/O一连接一线程模型，架构的性能，弹性伸缩能力和可靠性都得到了极大的提升
+
+# Selector(选择器)
+Selector是一个抽象类，常用方法和说明如下:
+```java
+public abstract class Selector Implements Cloeseable{
+  public static Selector open();//得到一个选择器对象
+  public int select(long timeout);//监控所有注册的通道，当其中有IO可以操作时，将对应的SelectorKey加入到内部集合中并返回，参数用来设置超时时间
+  public Set<SelectionKey> selectedKeys();//从内部集合中得到所有的SelectionKey
+}
+```
+
+## Selector(选择器)
+注意事项
+1. NIO中的ServerSocketChannel功能类似ServerSocket,ServerSocket功能类似Socket
+2. selector相关方法说明
+```java
+selector.select();//阻塞
+selector.select(1000);//阻塞1000毫秒，在1000毫秒后返回
+selector.select();//唤醒selector
+selector.selectNow();//不阻塞,立马返还
+```
+
+说明:
+1. 当客户端连接时，会通过ServerSocketChannel 得到SocketChannel
+2. selector开始监听
+3. 将socketChannel注册到Selector上，register(Selector sel,int pos), 一个selector上可以注册多个SocketChannel
+4. 注册后返回一个SelectionKey,会和该Selector关联(集合)
+5. Selctor进行监听，select方法，返回有事件发生的通道个数。
+6. 进一步得到各个SelectionKey(有事件发生)
+7. 在通过SelectionKey反向获取SocketChannl channel();
+8. 可以通过得到的channel完成业务处理
+
+
+
+# SelectionKey
+1. SelectionKey,表示Selector和网络通道的注册关系，共四种
+int OP_ACCEPT: 有新的网络连接可以accept, 值为16
+int OP_CONNECT: 代表连接已建立, 值为8
+
+int OP_READ: 代表读操作, 值为1
+int OP_WRITE: 代表写操作, 值为4
+源码中:
+public static final int OP_READ=1<<0;
+public static final int OP_WRITE=1<<2;
+public static final int OP_CONNECT=1<<3;
+public static final int OP_ACCEPT=1<<4;
+
+## ServerSocketChannel
+1. 在服务器端监听新的客户端连接
+2. 相关方法如下
+```java
+public abstract class ServerSocketChannel extends AbstractSelectableChannel implements NetworkChannel{
+  public static ServerSocketChannel open();//得到一个ServerSocketChannel通道
+  public final ServerSocketChannel bind(SocketAddress loacl);//设置服务端口号
+  public final SelectableChannel configureBlocking(boolean block);//设置阻塞或者非阻塞模式,取值false表示采用非阻塞模式
+  public SocketChannel accept();//介绍一个连接，返回代表这个连接的通道对象
+  public final SelectionKey register(Selector sel,int ops);//注册一个选择器并设置监听事件
+}
+```
+
+## SocketChannel
+1. SocketChannel, 网络IO通道，具体负责读写操作。NIO把缓冲区的数据写入通道，或者把通道里的数据读到缓冲区
+2. 相关方法如下
+```java
+public abstract class SocketChannel
+extends AbstractSelectableChannel
+implements ByteChannel,ScatteringByteChannel,GatheringByteChannel,NetworkChannel{
+  public static SocketChannel open();//得到一个SocketChannel通道
+  public final SelectableChannel configureBlocking(boolean block);//设置阻塞或者非阻塞模式，取值false表示采用非阻塞模式
+  public boolean connect(SocketAddress remote);//连接服务器
+  public boolean finishConnect();//如果上面的方法连接失败，接下来就要通过该方法完成连接操作
+  public int write(ByteBuffer src);//往通道里写数据
+  public int read(ByteBuffer dst);//往通道里读数据
+  public final SelectionKey register(Selector sel,int ops,Object att);//注册一个选择器并设置监听事件，最后一个参数可以设置共享数据
+  public final void close();//关闭通道
+}
+```
+
+## NIO网络编程应用实例实例1：群聊系统
+实例要求:
+1. 编写一个NIO群聊系统，实现服务器和客户端之间的数据简单通讯(非阻塞)
+2. 实现多群聊
+3. 服务器端，可以检测用户上线，离线，并实现消息转发功能
+4. 客户端: 通过channel可以无阻塞发送消息给其他所有用户,同时可以接受其他用户发送的消息(由服务器转发啊得到)
+5. 目的: 进一步理解NIO非阻塞网络编程机制
+
