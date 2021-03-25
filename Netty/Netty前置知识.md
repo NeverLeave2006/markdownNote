@@ -50,7 +50,7 @@ FileChannel类主要用来对本地文件进行IO操作，常见的方法有
 
 ## 关于Buffer和Channel的注意事项和细节
 1. ByteBuffer支持类型化的put和get, put放入的是什么数据类型，get就应该使用响应的数据类型来取出，否则可能有BufferUnderflowException异常。
-2. 可以将一个普通Buffer转成制度Buffer
+2. 可以将一个普通Buffer转成只读Buffer
 3. NIO还提供了MapperedbyteBuffer, 可以让文件直接在内存(堆外的内存)中进行修改，而如何同步文件由NIO来完成。
 4. 前面我们讲的读写操作，都是通过一个Buffer完成的，NIO还支持通过多个Buffer(即Buffer数组)完成读写操作，即Scattering和Gatering
 

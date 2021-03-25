@@ -16,7 +16,7 @@ Docker是一个开源的应用容器引擎
 17.3之后分为CE,EE两种版本
 
 > Docker是一种容器技战术，规避跨环境迁移问题
-### 安卓Docker
+### 安装Docker
 CentOS7版本
 
 ### Docker架构
