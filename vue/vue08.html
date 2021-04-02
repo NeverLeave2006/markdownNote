@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue基础08</title>
+</head>
+<body>
+    <div id="app">
+        <ul>
+            <li v-for="(item,idx) in arr">{{idx+1}}:{{item}}</li>
+        </ul>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script>
+        var app=new Vue({
+            el:"#app",
+            data:{
+                arr:["北京","上海","广州","深圳"]
+
+            },
+            methods:{
+                toggle:function(){
+                    this.isActive=!this.isActive
+                }
+            }
+        })
+    </script>
+</body>
+</html>

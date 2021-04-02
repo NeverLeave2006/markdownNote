@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue基础01</title>
+    
+</head>
+<body>
+    <div id="app">
+        {{message}}<br/>
+        {{school.name}}<br/>
+        {{school.mobile}}<br/>
+        <ul>
+            <li>{{campus[0]}}</li>
+            <li>{{campus[1]}}</li>
+            <li>{{campus[2]}}</li>
+            <li>{{campus[3]}}</li>
+        </ul>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script>
+        var app=new Vue({
+            el:"#app",
+            data:{
+                message:"Hello Vue!",
+                school:{
+                    name:"黑马程序员",
+                    mobile:"7453975438"
+                },
+                campus:["北京","上海","广州","深圳"]
+            }
+        })
+    </script>
+</body>
+</html>
