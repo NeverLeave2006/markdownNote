@@ -241,10 +241,96 @@ b. 索引建立在经常查询的字段上
 a. 复合索引不要跨列或者无序使用(最佳左前缀)
 b. 尽量使用全索引匹配
 c. 不要在索引上进行操作，否则索引失效
+d. 对于复合索引（a,b,c）,b失效，则c失效
+e. 复合索引不能使用!=，或者is not null
 
+sql优化器有一定概率，至于是否实际优化了需要explain,优化器可能影响我们的优化
+一般而言，范围查询后的索引失效
+补救：尽量使用索引覆盖(using index)，这个不会变
+
+like尽量以常量开头，不要以%开头
+
+尽量不要使用类型转换，显式，隐式都会使索引失效
+
+尽量不要使用or否则索引失效(两边都失效)
 
 ## 一些其他优化方法
+1. exist和in
+   select ... from table where exist/in (子查询)
+   如果主查询的数据集更大，则使用in
+   如果子查询的数据集大，则使用exist
+    exist语法: 将主查询的结果放到子查询中校验是否有数据(如果有数据，则成称为校验成功)
+   select tname from teacher where exists (select * from teacher);
+
+2. order by 优化:
+- using filesort 有两种算法：双路排序，单路排序(IO次数)
+Mysql4.1前 默认双路排序，4.1之后默认单路排序
+IO非常消耗性能，单路只读取一次，比双路快，单路排序比双路占用更多buffer
+max_length_for_sort_data值太低，mysql会从单路切换到双路
+- 避免使用select *
+- 复合索引，不要跨列使用，避免using filesort
+- 保证全部排序字段排序的一致性(都是升序或者降序)
+
 ## SQL排查 - 慢查询日志
+mysql提供的一种日志记录
+- 检查是否开启慢查询日志:
+show variables like '%slow_query_log%';
+
+- 临时开启:
+set global slow_query_log=1; --在内存中临时开启
+
+- 永久开启:
+/etc/my.cnf中追加设置
+vi /etc/my.cnf
+```cnf
+[mysqld]
+slow_query_log=1
+slow_query_log_file=/var/lib/mysql/localhost-slow.log
+```
+
+- 慢查询阈值:
+show variables like '%long_query_time%';
+
+- 临时设置阈值:
+set global long_query_time=5; --设置完毕后，重新登录起效(不需要重启服务)
+
+- 永久设置阈值：
+/etc/my.cnf中追加设置
+vi /etc/my.cnf
+```cnf
+[mysqld]
+long_query_time=3
+```
+
+- 查询超过阈值的SQL个数:
+```sql
+show global status like '%slow_queries%';--查询个数
+```
+- 查看慢查询日志:
+```shell
+cat /var/lib/mysql/localhost-slow.log
+```
+- 通过mysqldumpslow工具查看慢SQL,可用通过一些过滤条件 快速查找出需要定位的慢SQL
+mysqldumpslow --help
+s: 排序方式
+r: 逆序
+l: 锁定时间
+g: 正则匹配模式
+```sql
+-- 获取返回记录组最多的3个SQL
+mysqldumpslow -s R -T 3 /var/lib/mysql/localhost-slow.log
+
+-- 获取访问次数最多的3个SQL
+mysqldumpslow -s c -t 3 /var/lib/mysql/localhost-slow.log
+
+-- 按照时间排序，前10条包含left join查询语句的SQL
+mysqldumpslow -s t -t 10 "left join" /var/lib/mysql/localhost-slow.log
+
+```
+
 ## 分析海量数据
+a. 模拟海量数据
+
+
 ## 锁机制：解决因资源共享而造成的并发问题
 ## 主从复制
