@@ -325,12 +325,96 @@ mysqldumpslow -s c -t 3 /var/lib/mysql/localhost-slow.log
 
 -- 按照时间排序，前10条包含left join查询语句的SQL
 mysqldumpslow -s t -t 10 "left join" /var/lib/mysql/localhost-slow.log
-
 ```
 
 ## 分析海量数据
-a. 模拟海量数据
+profiles
+a. 模拟海量数据(存储函数，java)
+```sql
+show profiles;--默认关闭
+show varibales like '%profiling%';
+set profiling = on;--记录所有profiling打开后的语句，记录所有内部sql花费的总时间
 
+--精确分析: sql诊断
+show profile all for query 上一步查询的Query_ID
+
+--全局查询日志:记录开启之后的全部SQL语句(这些全局的记录操作仅仅在调优，开发过程中打开即可，在部署时一定要关闭)
+show variables like '%general_log%';
+set global general_log =1; -- 开启全局日志
+set global log_output='table'-- 输出到表
+set global general_log_file='/temp/general.log'-- 输出到文件
+-- 开启后，会记录所有SQL：记录到mysql.general_log表中
+select * from mysql.general_log;
+
+--只能帮助分析
+```
 
 ## 锁机制：解决因资源共享而造成的并发问题
-## 主从复制
+分类:
+操作类型:
+a. 读锁(共享锁): 对同一个数据,多个读操作可以同时进行，互不干扰
+b. 写锁(互斥锁): 对当前写操作没有完毕,则无法进行其他操作
+
+操作范围:
+a. 表锁：一次性对一整张表整体加锁,MyISAM 开销小，加锁快;无死锁，但是锁的范围大，容易发生锁冲突,并发程度低
+b. 行锁: 一次性对一条数据加锁。比表锁冲突的概率低。InnoDB使用行锁，开销大，加锁慢；锁的范围较小，并发度高(很少发生高并发问题)
+c. 页锁:
+
+```sql
+-- 查看加锁的表:
+show open tables;--0 未加锁，1 已经加锁
+
+--分析表锁定的严重程度
+show status like 'table%';
+-- Table_locks_immediate 立刻能获取到的锁
+-- Table_locks_waited 需要等待的表锁数(如果值越大，说明存在越大的锁竞争)
+-- 一般建议:
+--     Table_locks_immediate/Table_locks_waited>5000,采用InnodDB，否则采用MyISAM引擎
+
+
+-- 加锁
+lock table tablelock read;--读锁，当前被加锁的会话可以读,不能修改，其他表不能读也不能写
+--其他会话只是如果写操作会一直等待,可以读，要等待释放锁
+
+lock table tablelock write;--写锁，当前会话可以对加了写锁的表进行任何操作，不能操作其他表
+--其他会话删改查需要等待
+
+
+```
+
+对行锁情况:
+1. 如果会话对某条数据a进行DML操作(研究时:关闭了自动commit的情况下),则其他会话必须等待会话x结束事务后，才能对数据a进行操作。
+2. 表锁 是通过unlock tables; 行锁是通过事务解锁
+
+
+行锁注意: 
+a. 如果没有索引，行锁转为表锁
+b. 行锁的一种特殊情况 间隙锁
+值在范围内，但是不存在
+间隙: mysql自动给间隙加锁
+行锁：如果有where,则时间加锁的范围就是where 后面的范围(不是实际的值)
+
+行锁:
+InnoDB默认采用行锁;
+缺点： 比锁表性能损耗大
+优点:  并发能力强,效率高，建议高并发用InnoDB，否则用MyISAM
+
+行锁分析:
+show status like '%innodb_row_lock%';
+    Innodb_row_lock_current_waits: 当前正则等待锁的数量
+    Innodb_row_lock_time: 等待总时长。从系统启动到现在一共等待的时间
+    Innodb_row_lock_time_avg: 平均等待总时长。从系统启动到现在平均等待的时间
+    Innodb_row_lock_time_max: 最大等待总时长。从系统启动到现在最大一次等待的时间
+    Innodb_row_lock_waites: 等待次数,从系统启动到现在一共等待的次数。
+
+```sql
+--关闭自动提交
+set autocommit=0;
+
+start transaction;
+
+begin;
+
+-- 加行锁,非自动提交
+select * from limelock where id=2 for update;
+```
