@@ -124,7 +124,7 @@ location /image/ {
 ## nginx原理
 
 
-## nginx 反向代理数据库
+## nginx 反向代理数据库缓存等
 ```conf
 stream { 
     upstream mysql { 
