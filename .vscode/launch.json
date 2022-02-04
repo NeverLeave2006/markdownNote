@@ -5,10 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "pwa-chrome",
+            "name": "Python: 当前文件",
+            "type": "python",
             "request": "launch",
-            "name": "Open vue01.html",
-            "file": "d:\\CodingPractise\\markdown\\vue\\vue01.html"
+            "program": "${file}",
+            "console": "integratedTerminal"
         }
     ]
 }

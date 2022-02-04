@@ -99,3 +99,55 @@ resv+last_money-cost
      -  30天和60天是中期均线指标,称作季均线指标：
      -  120天和240天的是长期均线指标,称作年均线指标。
   -  均线计算方法:MA=(C1+C2+...+CN)/N C:某日收盘价 N:移动平均周期(天数)
+
+```python
+import tushare as ts
+import pandas as pd
+from pandas import DataFrame,Series
+import numpy as np
+
+#获取某只股票的历史行情数据
+#code字符串形式的股票代码
+df=ts.get_k_data(code="601988",start='2000-01-01')
+
+# 将互联网上获取的股票数据存储到本地
+df.to_csv("中国银行.csv")# 调用to_xxx将df中的数据写入本地进行存储
+
+df=pd.read_csv("中国银行.csv")
+df.head()
+# 删除df中指定的一列
+df.drop(labels="Unnamed: 0",axis=1,inplace=True)
+# 查看每一类的数据类型
+df.info
+# 将time类转为时间序列类型
+df['date']=pd.to_datetime(df['date'])
+# 将date列作为元数据的行索引
+df.set_index('date',inplace=True)
+df.head()
+
+########################################
+#5日均线
+ma5=df['close'].rolling(5).mean()
+#30日均线
+ma30=df['close'].rolling(30).mean()
+
+#均线图像
+# import matplotlib.pyplot as plt
+# %matplotlib inline
+# plt.plot(ma5[50:200])
+# plt.plot(ma30[50:200])
+
+ma5=ma5[30:]
+ma30=ma30[30:]
+s1=ma5<ma30
+s2=ma5>ma30
+
+df=df[30:]
+
+death_ex=s1 & s2.shift(1)#判断死叉的条件
+death_date=df.loc[death_ex].index
+
+gold_ex=s1 | s2.shift(1)#判断金叉的条件
+gold_date=df.loc[gold_ex].index
+
+```
