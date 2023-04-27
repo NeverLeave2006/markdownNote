@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        //声明格式
+        let a;
+        let b,c,d;
+        let f=521,g='fasdfsadf',h=[]
+
+        //1.变量不能重复声明，var可以
+        //2.块级作用域 全局，函数，evel
+        {
+            let girl='周扬青'
+        }
+        console.log(girl)
+
+        //3.不存在变量提升
+        console.log(song) //只是输出undifined
+        var song='value1'
+
+        console.log(song2) //报错
+        let song2='value1'
+
+        //4.不影响作用域
+        {
+            let school='尚硅谷';
+            function fn(){
+                console.log(school)
+            }
+            fn();//正常输出
+        }
+
+
+    </script>
+</body>
+</html>
