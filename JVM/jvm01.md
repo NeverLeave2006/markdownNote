@@ -501,3 +501,600 @@ java -XX:+PrintFlagsFinal -versiion | findstr "GC" //查看虚拟机垃圾回收
 元空间内存不足
 
 # 类加载和字节码技术
+
+1. 类文件结构
+
+```
+ClassFile {
+    u4             magic; //Class 文件的标志：魔数
+    u2             minor_version;//Class 的次版本号
+    u2             major_version;//Class 的主版本号
+    u2             constant_pool_count;//常量池的数量
+    cp_info        constant_pool[constant_pool_count-1];//常量池
+    u2             access_flags;//Class 的访问标志
+    u2             this_class;//当前类
+    u2             super_class;//父类
+    u2             interfaces_count;//接口
+    u2             interfaces[interfaces_count];//一个类可以实现多个接口
+    u2             fields_count;//Class 文件的字段属性
+    field_info     fields[fields_count];//一个类会可以有个字段
+    u2             methods_count;//Class 文件的方法数量
+    method_info    methods[methods_count];//一个类可以有个多个方法
+    u2             attributes_count;//此类的属性表中的属性数
+    attribute_info attributes[attributes_count];//属性表集合
+}
+```
+
+1.1 魔数
+0-3字节, 表示它是否是【class】类型的文件
+cafebabe
+
+1.2 类的版本
+4-7 类的版本 表示是java 对应的jdk版本
+![字节码版本](.\字节码版本.jpg)
+
+1.3 常量池
+
+8-9 常量池的长度 
+
+#0项不计入,也没有值
+
+![常量类型](.\常量类型.jpg)
+
+1.4 访问标识与继承信息
+
+![访问标识](.\访问标识.png
+)
+
+各个标识相与得到结果
+如21=20+1：公共的类
+
+1.5 field成员变量的信息
+
+字段描述符的类型含义表：
+
+|字段描述符|类型|含义|
+|---|---|---|
+|B|byte|基本类型byte|
+|C|char|基本类型char|
+|D|double|基本类型double|
+|F|float|基本类型float|
+|I|int|基本类型int|
+|J|long|基本类型long|
+|LClassName;|reference|对象类型，例如Ljava/lang/Object;|
+|S|short|基本类型short|
+|Z|boolean|基本类型boolean|
+|[|reference|数组类型|
+
+1.6 Method信息
+...
+
+1.7 附加属性
+...
+
+详情看java虚拟机规范
+
+2. 字节码指令
+
+2.1 入门
+0x2a: aload_0 加载slot 0的变量(即this) 作为下面构造方法的参数
+0xb7: invokespecial 预备调用构造方法
+0x0001: 常量池中的#1项目 构造方法
+0xb1: return 返回
+
+2.2 javap工具
+
+javap -v xxx.class 输出详细信息
+
+2.3 图解方法执行流程
+
+  1. 常量池载入运行时常量池
+  2. 方法字节码载入方法区
+  3. main线程开始运行，分配栈帧内存(局部变量表+操作数栈)
+  4. 执行引擎开始执行字节码
+    bipush： byte变量压栈
+    sipush:  short变量压栈
+    ldc:     常量池int数据入栈
+    ldc2_2:  long类型压栈(2次压入)
+    > 超过short的数字存入常量池,否则和字节码一起，如果超过32767会在编译期间计算好放常量池(常量折叠)
+    istore_1: 将操作数栈顶数据弹出，存入局部变量表 slot 1
+    ldc #3: 从常量池加载#3数据到操作数栈
+    istore_2: 将操作数栈顶数据弹出，存入局部变量表 slot 2
+    iload_1: 局部变量slot 1的值读入操作数栈
+    iload_2: 局部变量slot 2的值读入操作数栈
+    iadd:    加法运算
+    istore_3: 将操作数栈顶数据弹出，存入局部变量表 slot 3
+    getstatic #4: 在常量池中找到成员变量的引用(System.out对象)
+    iload_3: 局部变量slot 3的值读入操作数栈
+    invokevirtual #5:
+      - 找到常量池#5 项目
+      - 定位到方法区println(I)V方法
+      - 生成新的栈帧
+      - 传递参数, 执行新栈帧中的字节码
+    return: 完成main方法调用，弹出main栈帧程序结束
+
+2.4 示例 a++:
+
+```java
+public class Demo1 {
+    public static void main(String[] args) {
+        int a=10;
+        int b=a++ + ++a + a--;
+        System.out.println(a);
+        System.out.println(b);
+    }
+}
+```
+
+javap -v:
+```
+Classfile /D:/CodingPractise/java/jvmLearn/out/production/jvmLearn/top/snowlands/Demo1.class
+  Last modified 2023年4月28日; size 580 bytes
+  SHA-256 checksum cc3c5b1d04ef83da0067501758f5caa15792f5d811f82f6289260c38ef2ea338
+  Compiled from "Demo1.java"
+public class top.snowlands.Demo1
+  minor version: 0
+  major version: 61
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #19                         // top/snowlands/Demo1
+  super_class: #2                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 2, attributes: 1
+Constant pool:
+   #1 = Methodref          #2.#3          // java/lang/Object."<init>":()V
+   #2 = Class              #4             // java/lang/Object
+   #3 = NameAndType        #5:#6          // "<init>":()V
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Fieldref           #8.#9          // java/lang/System.out:Ljava/io/PrintStream;
+   #8 = Class              #10            // java/lang/System
+   #9 = NameAndType        #11:#12        // out:Ljava/io/PrintStream;
+  #10 = Utf8               java/lang/System
+  #11 = Utf8               out
+  #12 = Utf8               Ljava/io/PrintStream;
+  #13 = Methodref          #14.#15        // java/io/PrintStream.println:(I)V
+  #14 = Class              #16            // java/io/PrintStream
+  #15 = NameAndType        #17:#18        // println:(I)V
+  #16 = Utf8               java/io/PrintStream
+  #17 = Utf8               println
+  #18 = Utf8               (I)V
+  #19 = Class              #20            // top/snowlands/Demo1
+  #20 = Utf8               top/snowlands/Demo1
+  #21 = Utf8               Code
+  #22 = Utf8               LineNumberTable
+  #23 = Utf8               LocalVariableTable
+  #24 = Utf8               this
+  #25 = Utf8               Ltop/snowlands/Demo1;
+  #26 = Utf8               main
+  #27 = Utf8               ([Ljava/lang/String;)V
+  #28 = Utf8               args
+  #29 = Utf8               [Ljava/lang/String;
+  #30 = Utf8               a
+  #31 = Utf8               I
+  #32 = Utf8               b
+  #33 = Utf8               SourceFile
+  #34 = Utf8               Demo1.java
+{
+  public top.snowlands.Demo1();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 6: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ltop/snowlands/Demo1;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=3, args_size=1
+         0: bipush        10
+         2: istore_1
+         3: iload_1                           //i++ 先load再自增
+         4: iinc          1, 1                //直接在槽位上进行自增运算
+         7: iinc          1, 1                //++i 先自增，再load
+        10: iload_1
+        11: iadd
+        12: iload_1
+        13: iinc          1, -1
+        16: iadd
+        17: istore_2
+        18: getstatic     #7                  // Field java/lang/System.out:Ljava/io/PrintStream;
+        21: iload_1
+        22: invokevirtual #13                 // Method java/io/PrintStream.println:(I)V
+        25: getstatic     #7                  // Field java/lang/System.out:Ljava/io/PrintStream;
+        28: iload_2
+        29: invokevirtual #13                 // Method java/io/PrintStream.println:(I)V
+        32: return
+      LineNumberTable:
+        line 8: 0
+        line 9: 3
+        line 10: 18
+        line 11: 25
+        line 12: 32
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      33     0  args   [Ljava/lang/String;
+            3      30     1     a   I
+           18      15     2     b   I
+}
+SourceFile: "Demo1.java"
+```
+
+2.5 条件判断指令
+
+|指令|助记符|含义|
+|----|----|----|
+|0x99|ifeq|判断是否 == 0|
+|0x9a|ifne|判断是否 != 0|
+|0x9b|iflt|判断是否 < 0|
+|0x9c|ifge|判断是否 >= 0|
+|0x9d|ifgt|判断是否 > 0|
+|0x9e|ifle|判断是否 <= 0|
+|0x9f|if_icmpeq|两个int 是否 ==|
+|0xa0|if_icmpne|两个int 是否 !=|
+|0xa1|if_icmplt|两个int 是否 <|
+|0xa2|if_icmpge|两个int 是否 >=|
+|0xa3|if_icmpgt|两个int 是否 >|
+|0xa4|if_icmple|两个int 是否 <=|
+|0xa5|if_acmpeq|两个引用是否 ==|
+|0xa6|if_acmpne|两个引用是否 !=|
+|0xc6|ifnull|判断是否 == null|
+|0xc7|ifnonnull|判断是否 != null|
+
+说明： 
+- byte,short,char都会按照int进行比较,因为操作数栈都是4字节
+- goto用来进行跳转到指定行号的字节码
+
+```java
+public class Demo2 {
+    public static void main(String[] args) {
+        int a=0;
+        if(a==0){
+            a=10;
+        }else{
+            a=20;
+        }
+        System.out.println(a);
+    }
+}
+```
+
+```
+Code:
+  stack=2, locals=2, args_size=1
+      0: iconst_0
+      1: istore_1
+      2: iload_1             
+      3: ifne          12    
+      6: bipush        10
+      8: istore_1
+      9: goto          15
+    12: bipush        20
+  StackMapTable: number_of_entries = 2
+    frame_type = 252 /* append */
+      offset_delta = 12
+      locals = [ int ]
+    frame_type = 2 /* same */
+```
+
+2.6 循环控制指令
+
+```java
+public class Demo3 {
+    public static void main(String[] args) {
+        int a=0;
+        while(a<10){
+            a++;
+        }
+    }
+}
+
+```
+
+```
+0: iconst_0
+1: istore_1
+2: iload_1
+3: bipush        10   //操作数栈上现有0，再入栈一个10
+5: if_icmpge     14   //操作数栈最上面两个int 是否 >= (栈顶第二个>=栈顶第一个)
+8: iinc          1, 1
+11: goto          2
+14: return
+```
+
+do-while循环
+
+```java
+public class Demo4 {
+    public static void main(String[] args) {
+        int a=0;
+        do{
+            a++;
+        }while (a<10);
+    }
+}
+```
+
+```
+Code:
+  stack=2, locals=2, args_size=1
+      0: iconst_0
+      1: istore_1
+      2: iinc          1, 1
+      5: iload_1
+      6: bipush        10
+      8: if_icmplt     2
+     11: return
+
+```
+
+2.7 练习-判断结果
+
+```java
+public class Demo5 {
+    public static void main(String[] args) {
+        int i=0;
+        int x=0;
+        while(i<10){
+            x=x++;
+            i++;
+        }
+        System.out.println(x);
+    }
+}
+```
+
+```
+Constant pool:
+   #1 = Methodref          #2.#3          // java/lang/Object."<init>":()V
+   #2 = Class              #4             // java/lang/Object
+   #3 = NameAndType        #5:#6          // "<init>":()V
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Fieldref           #8.#9          // java/lang/System.out:Ljava/io/PrintStream;
+   #8 = Class              #10            // java/lang/System
+   #9 = NameAndType        #11:#12        // out:Ljava/io/PrintStream;
+  #10 = Utf8               java/lang/System
+  #11 = Utf8               out
+  #12 = Utf8               Ljava/io/PrintStream;
+  #13 = Methodref          #14.#15        // java/io/PrintStream.println:(I)V
+  #14 = Class              #16            // java/io/PrintStream
+  #15 = NameAndType        #17:#18        // println:(I)V
+  #16 = Utf8               java/io/PrintStream
+  #17 = Utf8               println
+  #18 = Utf8               (I)V
+  #19 = Class              #20            // top/snowlands/Demo5
+  #20 = Utf8               top/snowlands/Demo5
+  #21 = Utf8               Code
+  #22 = Utf8               LineNumberTable
+  #23 = Utf8               LocalVariableTable
+  #24 = Utf8               this
+  #25 = Utf8               Ltop/snowlands/Demo5;
+  #26 = Utf8               main
+  #27 = Utf8               ([Ljava/lang/String;)V
+  #28 = Utf8               args
+  #29 = Utf8               [Ljava/lang/String;
+  #30 = Utf8               i
+  #31 = Utf8               I
+  #32 = Utf8               x
+  #33 = Utf8               StackMapTable
+  #34 = Utf8               SourceFile
+  #35 = Utf8               Demo5.java
+
+
+    Code:
+      stack=2, locals=3, args_size=1
+         0: iconst_0
+         1: istore_1
+         2: iconst_0
+         3: istore_2
+         4: iload_1
+         5: bipush        10
+         7: if_icmpge     21
+        10: iload_2                           // 局部变量表x读进操作数栈
+        11: iinc          2, 1                // 对局部变量（Slot 0）进行自增（+1）操作，与栈无关
+        14: istore_2                          // 操作数栈上的0 覆盖了局部变量表的x
+        15: iinc          1, 1
+        18: goto          4
+        21: getstatic     #7                  // Field java/lang/System.out:Ljava/io/PrintStream;
+        24: iload_2
+        25: invokevirtual #13                 // Method java/io/PrintStream.println:(I)V
+        28: return
+```
+
+2.8 构造方法 
+
+  1. <cinit>()V
+  只在该类型被加载时才执行，只会执行一次。
+
+```java
+public class Demo6 {
+    static int i=0;
+    static {
+        i=20;
+    }
+    static {
+        i=30;
+    }
+}
+```
+
+```
+public class top.snowlands.Demo6
+  minor version: 0
+  major version: 52
+  flags: ACC_PUBLIC, ACC_SUPER
+Constant pool:
+   #1 = Methodref          #4.#14         // java/lang/Object."<init>":()V
+   #2 = Fieldref           #3.#15         // top/snowlands/Demo6.i:I
+   #3 = Class              #16            // top/snowlands/Demo6
+   #4 = Class              #17            // java/lang/Object
+   #5 = Utf8               i
+   #6 = Utf8               I
+   #7 = Utf8               <init>
+   #8 = Utf8               ()V
+   #9 = Utf8               Code
+  #10 = Utf8               LineNumberTable
+  #11 = Utf8               <clinit>
+  #12 = Utf8               SourceFile
+  #13 = Utf8               Demo6.java
+  #14 = NameAndType        #7:#8          // "<init>":()V
+  #15 = NameAndType        #5:#6          // i:I
+  #16 = Utf8               top/snowlands/Demo6
+  #17 = Utf8               java/lang/Object
+{
+  static int i;
+    descriptor: I
+    flags: ACC_STATIC
+
+  public top.snowlands.Demo6();
+    descriptor: ()V
+    flags: ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 3: 0
+
+  static {};
+    descriptor: ()V
+    flags: ACC_STATIC
+    Code:
+      stack=1, locals=0, args_size=0
+         0: iconst_0
+         1: putstatic     #2                  // Field i:I
+         4: bipush        20
+         6: putstatic     #2                  // Field i:I
+         9: bipush        30
+        11: putstatic     #2                  // Field i:I 以最后一次赋值为准
+        14: return
+      LineNumberTable:
+        line 4: 0
+        line 6: 4
+        line 9: 9
+        line 10: 14
+}
+```
+
+  2. <init>()V
+```java
+public class Demo7 {
+    private String a="s1";
+
+    {
+        b=20;
+    }
+
+    private int b=10;
+
+    {
+        a="s2";
+    }
+
+    public Demo7(String a,int b){
+        this.a=a;
+        this.b=b;
+    }
+
+    public static void main(String[] args) {
+        Demo7 demo7=new Demo7("s3",30);
+        System.out.println(demo7.a);
+        System.out.println(demo7.b);
+    }
+
+}
+```
+
+```
+Code:
+  stack=2, locals=3, args_size=3
+      0: aload_0
+      1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+      4: aload_0
+      5: ldc           #7                  // String s1
+      7: putfield      #9                  // Field a:Ljava/lang/String;
+    10: aload_0
+    11: bipush        20
+    13: putfield      #15                 // Field b:I
+    16: aload_0
+    17: bipush        10
+    19: putfield      #15                 // Field b:I
+    22: aload_0
+    23: ldc           #19                 // String s2
+    25: putfield      #9                  // Field a:Ljava/lang/String;
+    28: aload_0
+    29: aload_1
+    30: putfield      #9                  // Field a:Ljava/lang/String;
+    33: aload_0
+    34: iload_2
+    35: putfield      #15                 // Field b:I
+    38: return
+```
+
+编译器会按照从上到下的顺序收集所有{}代码块和成员变量赋值的代码，形成新的构造方法，但原始构造方法内的代码总是在最后
+
+<init>是实例化类时调用的方法，对非静态变量解析初始化，而<clinit>是类在初始化时调用的方法，是class类构造器对静态变量，静态代码块进行初始化，子类的<init>方法中会先对父类<init>方法的调用，并且clinit优先于init
+
+2.9 方法调用
+
+```java
+package top.snowlands;
+
+public class Demo8 {
+    public Demo8(){}
+
+    private void test1(){}
+
+    private final void test2(){}
+
+    public void test3(){}
+
+    public static void test4(){}
+
+    public static void main(String[] args) {
+        Demo8 demo8 = new Demo8();
+        demo8.test1();
+        demo8.test2();
+        demo8.test3();
+        Demo8.test4();
+        Demo8.test4();
+    }
+}
+```
+
+```
+Code:
+  stack=2, locals=2, args_size=1
+      0: new           #7                  // class top/snowlands/Demo8 肥胖内存然后把对象引用放入操作数栈
+      3: dup
+      4: invokespecial #9                  // Method "<init>":()V 静态绑定
+      7: astore_1
+      8: aload_1
+      9: invokevirtual #10                 // Method test1:()V
+    12: aload_1
+    13: invokevirtual #13                 // Method test2:()V  动态绑定，需要运行时确定
+    16: aload_1
+    17: invokevirtual #16                 // Method test3:()V  静态方法不用入栈
+    20: invokestatic  #19                 // Method test4:()V  静态绑定 性能高点
+    23: invokestatic  #19                 // Method test4:()V 
+    26: return
+```
+
+
+3. 编译器处理
+
+
+
+4. 类加载阶段
+5. 类加载器
+6. 运行期优化
