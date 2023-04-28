@@ -363,38 +363,59 @@ FUll gc: 全部包含老年代的垃圾回收
 6) Young Collection 跨代应用
 
   - 新生代回收的跨代引用(老年代引用新生代)问题
-
-  - 卡表与Remembered Set
-  - 在引用变更时通过post-write barrier+dirtyy card queue
+    - 卡表与Remembered Set 老年代细分，每个card 512k 如果有新生代引用将对应card标记为脏card
+  - 在引用变更时通过post-write barrier+dirtyy card queue 更新card标记，异步操作
   - connect refinement threads 更新 Remembered Set
 
 7) remark 重新标记
+pre-write barrier 写屏障 对象应用改变前把对象加入队列
+satb_mark_queue
+并发标记-> 重新标记
+ 写屏障指令
 
 8) jdk 8u20 字符串去重
 
+- 优点： 节省大量内存
+- 缺点： 略微多了点cpu空间,新生代回收时间略微增加
+
+-XX: +UserStringDeduplication
+
+- 将所有新分配的字符串放入一个队列
+- 当新生代回收时，G1并发检查是否有字符串重复
+- 如果和他们值一样，让他们应用同一个char[]
+- 注意, 与String.intern()不一样
+  - String.intern()关注的是字符串连接
+  - 而字符串去重关注的的char[]
+  - 在jvm内部使用了不同的字符串表
+
 节省内存
 
-9) 并发标记类卸载
+9) 并发标记类卸载 jdk8u40
+所有对象经过并发标记后，就能知道那些类不再被使用，当一个类加载器的所有类都不再被使用，则卸载它所加载的所有类
 
 -XX:+ClassUnloadingWithConcurrentMark 默认启用
 
 10） 回收巨型对象
-
 - 一个对象大于region的一半时, 称为巨型对象
 - G1不会对巨型对象进行拷贝
 - 回收时被优先考虑
 - G1会跟踪老年代所有incoming引用, 这样老年代incoming引用为0的巨型对象就可以在新生代垃圾回收时处理掉
+- "越早回收越好"
 
 11) JDK9并发标记时间的调整
 
 - 并发标记时间必须在堆空间占满前完成， 否则退化为 FullGC
 - JDK9之前需要使用 -XX:InitiatingHeapOccupancyPercent
-- JDK9可以动态调整
+- JDK9可以动态调整阈值 
   - -XX:InitiatingHeapOccupancyPercent用来设置初始值
   - 进行数据采样并动态调整
   - 总会添加一个安全的空挡空间
 
-12) 更高效的回收
+12) jdk9 更高效的回收
+
+- 250+增强
+- 180+ bug修复
+
 
 # 垃圾回收调优
 
@@ -404,5 +425,79 @@ FUll gc: 全部包含老年代的垃圾回收
 - 掌握相关工具
 - 准则: 调优跟2应用, 环境有关, 没有同意的法则
 
-java -XX:+PrintFlagFinal -versiion | findstr "GC" //查看虚拟机垃圾回收参数
+java -XX:+PrintFlagsFinal -versiion | findstr "GC" //查看虚拟机垃圾回收参数
 
+5.1 调优领域
+
+- 内存
+- 锁竞争
+- cpu占用
+- io
+
+5.2 确定目标
+
+- [低延迟]还是[高吞吐量],选择合适的回收器
+- CMS(低延迟),G1(大内存效果好),ZGC(G1之后低延迟)
+- ParallelGC
+
+- Zing 虚拟机(大内存，低停顿)
+
+5.3 最快的GC是不发生GC
+- 查看FullGC前后的内存占用, 考虑下面几个问题
+  - 数据是不是太多
+    - resultSet=statement.executeQuery("select * from xxx");//限制返回记录
+  - 数据表示是否太臃肿
+    - 对象图 用到哪个查哪个
+    - 对象大小 最小的要16个字节，包装类大约24个字节，尽量使用基本数据类型
+  - 是否存在内存泄漏
+    - static Map map= 
+    - 软应用
+    - 弱引用
+    缓存尽量使用第三方缓存实现
+  
+5.4 新生代调优
+- 新生代特点
+  - 所有的new 操作的内存分配非常廉价
+    - TLAB thread-local allocation buffer
+  - 死亡对象的回收代价是0
+  - 大部分对象用过即死
+  - Minor GC 的时间远远低于Full GC
+
+-Xmx 设置新生代初始和最大值
+新生代建议是堆的25% 到50% 新生代越大，吞吐量越高，到一定程度会下降(回收时间变长)
+
+- 新生代能容纳所有```[并发量*(请求-响应)]```的数据
+
+- 幸存区大道能保留 ```[当前活跃对象+需要晋升的对象]```
+
+- 晋升区阈值配置得当,让长时间存活对象得到尽快晋升
+  -XX: MaxTenuringThreshold=threashold 最大晋升阈值门槛，默认15
+  -XX: +PrintTenuringDistribution 在每次新生代GC时，打印出幸存区中对象的年龄分布
+
+5.5 老年代调优
+
+以CMS为例
+- CMS的老年代内存越大越好
+- 先尝试不做调优，如果没有Full GC 那么已经...,否则先尝试新生代调优
+- 观察发生Full GC时老年代内存占用,将老年代内存预设调大1/4~1/3
+  - XX: CMSInitiatingOccupancyFraction=percent 老年代垃圾回收阈值 一般是75%~80%
+
+> 1、CMSInitiatingOccupancyFraction默认值是-1，并不是许多人说的68、92之类的。
+> 2、CMSInitiatingOccupancyFraction是用来计算老年代最大使用率（_initiating_occupancy）的。大于等于0则直接取百分号，小于0则根据公式来计算。这个_initiating_occupancy需要配合-XX:+UseCMSInitiatingOccupancyOnly来使用。
+> 3、不同版本最终得到的_initiating_occupancy不同，归根结底应该是不同版本下的MinHeapFreeRatio值不同。
+
+
+5.6 案例
+
+- 案例1 Full GC和Minor GC频繁
+空间紧张 幸存区空间紧张会快速晋升到老年代 观察堆空间大小
+增大新生代空间 减少晋升到老年代
+
+- 案例2 请求高峰期发生Full GC，单次暂停时间特别长(CMS)
+查看CMS 日志
+-XX:+CMSScavengeBeforeRemark 重新标记前先对新生代对象进行垃圾清理
+  
+- 案例3 老年代充裕情况下,发生Full GC (cms jdk1.7)
+元空间内存不足
+
+# 类加载和字节码技术
