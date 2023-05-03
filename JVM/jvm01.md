@@ -1090,8 +1090,477 @@ Code:
     26: return
 ```
 
+2.10 多态调用
+
+```java
+public class Demo9 {
+
+    public static void test(Animal animal){
+        animal.eat();
+        System.out.println(animal.toString());
+    }
+
+    public static void main(String[] args) throws IOException {
+        test(new Cat());
+        test(new Dog());
+        System.in.read();
+    }
+
+}
+
+abstract class Animal{
+    public abstract void eat();
+
+    @Override
+    public String toString() {
+        return "我是"+this.getClass().getSimpleName();
+    }
+}
+
+class Dog extends Animal{
+    @Override
+    public void eat() {
+        System.out.println("啃骨头");
+    }
+}
+
+class Cat extends Animal{
+    @Override 
+    public void eat() {
+        System.out.println("吃鱼");
+    }
+}
+```
+
+  1. 运行代码
+  停在System.in.read()方法上, 这时运行jps获取进程id
+
+  2. 运行HSDB工具
+  进入JDK安装目录,执行
+
+```
+java -cp ./lib/sa-jdi.jar sun.jvm.hotspot.HSDB
+```
+进入图形界面attach进程id
+
+   3. 查找某个对象
+
+   对象找到class类，提供class类找到虚方法地址
+
+小结:
+当执行invokevirtual指令时:
+- 先通过栈帧中的对象引用找到对象
+- 分析对象头,找到对象的实际class
+- Class结构中有vtable,它在类加载的链接阶段就已经根据方法重写规则生成好了
+- 查表得到方法的具体地址
+- 执行方法的字节码
+
+2.11 异常处理
+
+```java
+public class DemoTryCatch {
+    public static void main(String[] args) {
+        int i=0;
+        try{
+            i=10;
+        }catch (Exception e){
+            i=20;
+        }
+    }
+}
+
+```
+
+```
+Code:
+      stack=1, locals=3, args_size=1
+         0: iconst_0
+         1: istore_1
+         2: bipush        10
+         4: istore_1
+         5: goto          12
+         8: astore_2
+         9: bipush        20
+        11: istore_1
+        12: return
+Exception table:  //异常表,从第二行开始，如果出现异常进入第八行
+         from    to  target type
+             2     5     8   Class java/lang/Exception
+```
+
+多个single-catch的情况
+
+```java
+public class DemoTryCatch {
+    public static void main(String[] args) {
+        int i=0;
+        try{
+            i=10;
+        }catch (ArithmeticException e){
+            i=30;
+        }catch (NullPointerException e){
+            i=40;
+        }catch (Exception e){
+            i=20;
+        }
+    }
+}
+```
+
+```
+Code:
+    stack=1, locals=3, args_size=1
+        0: iconst_0
+        1: istore_1
+        2: bipush        10
+        4: istore_1
+        5: goto          26
+        8: astore_2
+        9: bipush        30
+      11: istore_1
+      12: goto          26
+      15: astore_2
+      16: bipush        40
+      18: istore_1
+      19: goto          26
+      22: astore_2
+      23: bipush        20
+      25: istore_1
+      26: return
+    Exception table:
+        from    to  target type
+            2     5     8   Class java/lang/ArithmeticException
+            2     5    15   Class java/lang/NullPointerException
+            2     5    22   Class java/lang/Exception
+```
+- 因为异常出现时，只能进入Exception table中的一个分支,所以局部变量表slot 2 的位置被共用
+
+multi-catch的情况,只是一个语法糖,三个异常入口一样
+
+```java
+public class DemoTryCatch {
+    public static void main(String[] args) {
+        int i=0;
+        try{
+            i=10;
+        }catch (ArithmeticException | NullPointerException  e){
+            i=30;
+        }
+    }
+}
+```
+
+finally语法
+
+```java
+public class DemoTryCatch {
+    public static void main(String[] args) {
+        int i=0;
+        try{
+            i=10;
+        }catch (Exception e){
+            i=30;
+        }finally {
+            i=40;
+        }
+    }
+}
+
+```
+
+```
+Code:
+      stack=1, locals=4, args_size=1
+         0: iconst_0
+         1: istore_1
+         2: bipush        10
+         4: istore_1
+         5: bipush        40 //把finally中的内容全部放在try分支上
+         7: istore_1
+         8: goto          27
+        11: astore_2
+        12: bipush        30
+        14: istore_1
+        15: bipush        40
+        17: istore_1
+        18: goto          27
+        21: astore_3          //slot 存储异常引用
+        22: bipush        40
+        24: istore_1
+        25: aload_3
+        26: athrow
+        27: return
+      Exception table:
+         from    to  target type
+             2     5    11   Class java/lang/Exception
+             2     5    21   any  //任意剩余异常
+            11    15    21   any
+```
+
+#### finally 面试题 1
+
+- finally 出现了return 会出现什么？
+
+```java
+public class DemoTryCatch {
+
+    public static int test(){
+        try {
+            return 10;
+        }finally {
+            return 20;
+        }
+    }
+    public static void main(String[] args) {
+        System.out.println(test());  //输出20
+    }
+}
+```
+
+```
+public static int test();
+    Code:
+       0: bipush        10
+       2: istore_0
+       3: bipush        20 /finally中的代码一定会执行
+       5: ireturn
+       6: astore_1
+       7: bipush        20
+       9: ireturn
+    Exception table:
+       from    to  target type
+           0     3     6   any
+```
+
+#### finally 面试题 2
+
+finally对返回值的影响
+
+
+> 如果在finally中return 会吞掉异常，一定不要在finally中return
+
+```java
+public class DemoTryCatch {
+
+    public static int test(){
+        int i=10;
+        try{
+            return i;
+        }finally {
+            i=20;
+        }
+    }
+    public static void main(String[] args) {
+        System.out.println(test());  //返回10
+    }
+}
+```
+
+```
+public static int test();
+    Code:
+       0: bipush        10
+       2: istore_0
+       3: iload_0
+       4: istore_1      //将栈顶数据移除后存入 slot 1 为了固定返回值
+       5: bipush        20
+       7: istore_0
+       8: iload_1       // 载入slot 1 暂存的值(10)
+       9: ireturn       // 返回的就是10
+      10: astore_2
+      11: bipush        20  //返回后再赋值20
+      13: istore_0
+      14: aload_2
+      15: athrow
+    Exception table:
+       from    to  target type
+           3     5    10   any
+```
+
+2.13 synchronized
+
+对代码块进行枷锁解锁操作
+
+```java
+public class Demo {
+    public static void main(String[] args) {
+        Object lock=new Object();
+        synchronized (lock){
+            System.out.println("ok");
+        }
+    }
+
+```
+
+```
+ public static void main(java.lang.String[]);
+    Code:
+       0: new           #2                  // class java/lang/Object
+       3: dup                               // 复制对象的引用
+       4: invokespecial #1                  // Method java/lang/Object."<init>":()V
+       7: astore_1                          //第二个对象的引用赋值给slot 1的lock
+       8: aload_1                           // lock引用加载到操作数栈, 对象引用开始
+       9: dup                               // 需要两份 一份加锁，一份解锁
+      10: astore_2                          // lock 引用-> slot 2
+      11: monitorenter                      // 对laock进行加锁
+      12: getstatic     #3                  // Field java/lang/System.out:Ljava/io/PrintStream;
+      15: ldc           #4                  // String ok
+      17: invokevirtual #5                  // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+      20: aload_2                           // 加载slot 2的对象到栈顶
+      21: monitorexit                       // 解锁
+      22: goto          30
+      25: astore_3                          // 如果有异常 进入25
+      26: aload_2                           // 对同一个对象进行解锁
+      27: monitorexit
+      28: aload_3
+      29: athrow                            // 抛出异常
+      30: return
+    Exception table:
+       from    to  target type
+          12    22    25   any
+          25    28    25   any
+
+```
+
 
 3. 编译器处理
+
+所谓的`语法糖`其实就是java 编译器把*.java源码编译为*.class字节码的过程中, 自动生成和转换的一些代码，主要是为了减轻程序员的负担。
+
+编译器转换java源码只是等价的源码，并不是真的源码
+
+3.1 默认构造器
+
+```java
+public class Candy1 {
+
+}
+```
+
+编译成class后的等价源代码
+
+```java
+public class Candy1 {
+    public Candy1() { //这个无参构造器是自动加上的0
+    }
+}
+```
+
+3.2 自动拆装箱
+
+jdk5加入的，代码片段
+
+```java
+public class Candy2 {
+    public static void main(String[] args) {
+        Integer x=1;
+        int y=x;
+    }
+
+}
+```
+
+等价代码：
+
+```java
+public class Candy2 {
+    public static void main(String[] args) {
+        Integer x=Integer.valueOf(1);
+        int y=x.intValue();
+    }
+}
+```
+
+3.3 泛型集合取值
+
+java 编译泛型代码后会执行擦除的动作，即泛型信息在编译为字节码后时，当作Object来处理
+取容器元素时进行强制类型转换
+
+
+3.4 泛型反射
+字节码上的泛型信息被擦除，LocalVariableTypeTable仍然保留了方法参数的泛型信息
+
+方法的参数和返回值上的泛型信息才能在反射中获取
+
+```java
+public class Candy3 {
+
+    public Set<Integer> test(List<String> list, Map<Integer,Object> map){
+        return null;
+    }
+
+
+    public static void main(String[] args) throws NoSuchMethodException {
+        Method test = Candy3.class.getMethod("test", List.class, Map.class);
+        Type[] types = test.getGenericParameterTypes();
+        for(Type type:types){
+            if(type instanceof ParameterizedType){
+                ParameterizedType parameterizedType = (ParameterizedType) type;
+                System.out.println("原始类型 - "+parameterizedType.getRawType());
+                Type[] arguments = parameterizedType.getActualTypeArguments();
+                for(int i=0;i<arguments.length;i++){
+                    System.out.printf("泛型参数[%d] - %s\n",i,arguments[i]);
+                }
+            }
+        }
+    }
+
+}
+```
+
+3.4 可变参数
+
+```java
+public class Candy4 {
+
+    public static void foo(String... args){ //实际上就是一个数组对象
+        String[] array = args;
+        System.out.println(array);
+    }
+
+    public static void main(String[] args) throws NoSuchMethodException {
+        foo("hello","world");
+    }
+
+}
+```
+
+3.5 foreach循环
+
+jdk5引入的语法糖，数组的循环:
+
+```java
+public class Candy5 {
+
+    public static void main(String[] args) {
+        int[] array={1,2,3,4,5};
+        for(int e:array){
+            System.out.println(e);
+        }
+    }
+}
+```
+
+会被编译器转换为:
+
+```java
+public class Candy5 {
+    public Candy5() {
+    }
+
+    public static void main(String[] args) {
+        int[] array = new int[]{1, 2, 3, 4, 5};
+        int[] var2 = array;
+        int var3 = array.length;
+
+        for(int var4 = 0; var4 < var3; ++var4) {
+            int e = var2[var4];
+            System.out.println(e);
+        }
+
+    }
+}
+```
 
 
 
