@@ -1562,8 +1562,511 @@ public class Candy5 {
 }
 ```
 
+- list则会用iterator迭代器进行循环
+
+3.6 switch字符串
+
+从jdk7开始，switch可以用于字符串和枚举类,这个功能其实也是语法糖,例如
+
+```java
+public class Candy7 {
+
+    public static void main(String[] args) {
+        String str="hello";
+        switch (str){
+            case "hello":{
+                System.out.println("h");
+                break;
+            }
+            case "world":{
+                System.out.println("w");
+                break;
+            }
+        }
+    }
+}
+
+实际上是利用将字符串转换为hashcode进行进行switch操作，哈希码在编译期间就已经知道了
+执行了两遍switch
+先比较hashcode再比较equals： hashcode提高效率，equals避免hashcode冲突
+再利用bytecode进行比较
+
+3.7 switch枚举
+
+```java
+public class Candy8 {
+
+    enum Sex{
+        MALE,FEMALE
+    }
+
+    public static void foo(Sex sex){
+        switch (sex){
+            case MALE:
+                System.out.println("男");break;
+            case FEMALE:
+                System.out.println("女");break;
+        }
+    }
+
+    public static void main(String[] args) {
+        foo(Sex.FEMALE);
+    }
+
+}
+```
+- 定义一个合成类(仅jvm使用，对我们不可见)
+- 用来映射枚举的ordianal与数组元素的关系
+- 枚举的ordinal表示枚举对象的序号，从0开始
+- 即MALE的ordianl()=0,FEMALE的ordinal()=1
+
+3.8 枚举类
+
+枚举本质是合成类class,枚举类实例个数是有限的
+本质上是final class,使用私有构造方法
+
+3.9 try-with-resources
+
+jdk7新增的语法
+
+```java
+try(资源变量=创建资源对象){
+
+}catch(){
+
+}
+```
+
+其中资源对象需要实现AutoCloseable接口，例如InputStream, OutputStream, Connection, Statement, ResultSet等接口都实现了AutoCloseable, 使用try-with-resources可以不在写finally语句块,编译器自动生成关闭资源代码
+
+原始代码:
+```java
+public class Candy9 {
+
+    public static void main(String[] args) {
+        try(InputStream is=new FileInputStream("d:\\1.txt")){
+            System.out.println(is);
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+编译后等价代码:
+
+```java
+public class Candy9 {
+    public Candy9() {
+    }
+
+    public static void main(String[] args) {
+        try {
+            InputStream is = new FileInputStream("d:\\1.txt");
+            Throwable var2 = null;
+
+            try {
+                System.out.println(is);
+            } catch (Throwable var12) {
+              //var2 是我们刚刚出现的异常
+                var2 = var12;
+                throw var12;
+            } finally {
+              //判断了资源不为空
+                if (is != null) {
+                  //如果我们代码有异常
+                    if (var2 != null) {
+                        try {
+                            is.close();
+                        } catch (Throwable var11) {
+                          //如果close出现异常，作为被压制异常添加
+                            var2.addSuppressed(var11);
+                        }
+                    } else {
+                      //如果代码没有异常，close出现的异常就行最后catch块中的e
+                      //防止异常信息的丢失
+                        is.close();
+                    }
+                }
+
+            }
+        } catch (IOException var14) {
+            var14.printStackTrace();
+        }
+
+    }
+}
+
+```
+
+示例
+
+```java
+public class Candy10 {
+
+    public static void main(String[] args) {
+        try(MyResource resource=new MyResource()){
+            int i=1/0;
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+}
+
+class MyResource implements AutoCloseable {
+    @Override
+    public void close() throws Exception {
+        throw new Exception("close 异常");
+    }
+}
+```
+
+输出
+```
+java.lang.ArithmeticException: / by zero
+	at top.snowlands.Candy10.main(Candy10.java:11)
+	Suppressed: java.lang.Exception: close 异常
+		at top.snowlands.MyResource.close(Candy10.java:22)
+		at top.snowlands.Candy10.main(Candy10.java:12)
+```
+
+3.10 方法重写时的桥接方法
+
+方法重写时返回值分两种情况：
+
+- 父子类返回值一致
+- 子类返回值是可以父类方法返回值类型的子类
+
+示例:
+
+```java
+class A{
+    public Number m(){
+        return 1;
+    }
+}
+
+class B extends A{
+    @Override
+    public Number m() {
+        return 2;
+    }
+}
+```
+
+实际jvm上会这么处理
+```java
+class B extends A{
+    public Number m(){
+        return 1;
+    }
+
+    //这个才是真正重写了父类的合成方法，这个对程序员不可见，允许同名，jvm内部使用
+    public synthetic bridge Number m() {
+        return m();
+    }
+}
+```
+
+3.11 匿名内部类
+
+源代码:
+
+```java
+public class Candy12 {
+    public Candy12() {
+    }
+
+    public static void main(String[] args) {
+        Runnable var10000 = new Runnable() {
+            public void run() {
+                System.out.println("ok");
+            }
+        };
+    }
+}
+```
+
+转换后代码:
+
+```java
+//额外生成的类
+final class Candy11$1 implements  Runnable{
+    public void run() {
+        System.out.println("ok");
+    }
+}
+
+public class Candy12 {
+    public static void main(String[] args) {
+        Runnable runable=new Candy11$1();
+    }
+}
+```
+
+引用局部变量的匿名内部类,源代码:
+
+```java
+public class Candy12 {
+  public static void test(final int x){
+      Runnable ok = new Runnable() {
+          @Override
+          public void run() {
+              System.out.println("ok"+x);
+          }
+      };
+  }
+}
+```
+
+转换后的代码:
+```java
+//额外生成的类
+final class Candy11$1 implements  Runnable{
+  int val$x;
+  Candy11$1(int x){
+    this.val$x=x;
+  }
+  public void run() {
+      System.out.println("ok");
+  }
+}
+```
+
+注意
+匿名内部类引用局部变量时，局部必须是final的；
+因为在创建Candy11$1对象时，将x的值赋给了Candy11$1对象的value属性，所以x不应该再发生变化了
+如果变化，那么valx属性没有机会再一起跟着变化
+
+# 类加载
+
+加载-链接-初始化
+
+4.1 加载
+
+- 将类的字节码载入方法区中，内部采用C++的instanceKlass描述的java类，它的重要field有:
+  - _java_minor即java的类镜像，例如对String来说,就是String.class,作用是把klass暴露给java使用
+  - _super即父类
+  - _fields即成员变量
+  - _methods即方法
+  - _constants即常量池
+  - _class_loder即类加载器
+  - _vtable虚方法表
+  - _itable接口方法表
+- 如果这个类还有父类没加载，先加载父类
+- 加载和链接可能是交替运行的
+
+注意
+
+- instanceKlass这样的【元数据】是存储在方法区的(1.8 后的元空间), 但_java_mirror是存储在堆中
+- 可以通过前面介绍的HSDB工具查看
+
+![类加载](类加载.png)
+
+4.2 链接
+
+- 验证: 验证类是否符合JVM规范，安全性检查
+    用UE等支持二进制的编辑器修改HelloWorld.class的魔数,在控制台运行
+
+    验证阶段会完成以下校验：
+
+    - 文件格式验证：验证字节流是否符合Class文件格式的规范。例如：是否以0xCAFEBABE开头、主次版本号是否在当前虚拟机的处理范围之内、常量池中的常量是否有不被支持的类型 ...... 等等
+
+    - 元数据验证：对字节码描述的元数据信息进行语义分析，要符合Java语言规范。例如：是否继承了不允许被继承的类（例如final修饰过的）、类中的字段、方法是否和父类产生矛盾 ...... 等等
+
+    - 字节码验证：对类的方法体进行校验分析，确保这些方法在运行时是合法的、符合逻辑的。
+
+    - 符号引用验证：发生在解析阶段，符号引用转为直接引用的时候，例如：确保符号引用的全限定名能找到对应的类、符号引用中的类、字段、方法允许被当前类所访问 ...... 等等
+
+- 准备: 为static变量分配空间, 设置默认值
+  - static变量在JDK 7 之前存储于instanceKlass末尾,从JDK7开始,存储于_java_mirror末尾
+  - static变量分配空间和赋值是两个操作,分配空间在**准备阶段**完成，赋值在**初始化**阶段完成
+  - 如果static变量是final的基本类型,那么编译阶段就确定了，赋值在初始化阶段完成
+  - 如果static变量是final的,但属于引用类型，那么赋值也会在初始化阶段完成
+
+- 解析: 将常量池中的符号引用解析为直接引用
 
 
-4. 类加载阶段
-5. 类加载器
-6. 运行期优化
+4.3 初始化
+
+<cinit> ()v方法
+
+初始化即调用<cinit>()V，虚拟机会保证这个类的**构造方法**的线程安全
+
+发生的时机
+
+概括地说，类初始化是**懒惰的**
+
+- main 方法所在的类,总会被首先初始化
+- 首次访问这个类的静态变量或者静态方法时
+- 子类初始化，如果父类还没初始化，会引发
+- 子类访问父类的静态变量，只会触发父类的初始化，子类不会初始化
+- Class.forName
+- new 会导致初始化
+
+不会导致类初始化的情况
+
+- 访问类的static final静态变量(**基本类型和字符串**)不会触发初始化
+- 类对象.class不会触发初始化
+- 创建该类的数组不会触发初始化
+- 类加载的localClass方法
+- Class.forName的参数2为false时
+
+
+4.4 联系
+
+从字节码分析, 使用a,b,c这三个常量是否会导致E初始化
+
+```java
+public class Load4 {
+
+    public static void main(String[] args) {
+        System.out.println(E.a);//不会
+        System.out.println(E.b);//不会
+        System.out.println(E.c);//会，包装类型,需要初始化，不是基本类型和字符串
+    }
+
+}
+
+class E{
+    public static final int a=10;
+    public static final String b="hello";
+    public static final Integer c=20;
+
+    static {
+        System.out.println("init E");
+    }
+}
+```
+
+典型应用 - 完成懒惰初始化单例模式
+
+```java
+public class Singleton {
+
+    private Singleton(){}
+
+    //内部类中保存单例
+    private static class LazyHolder{
+        static final Singleton INSTANCE=new Singleton();
+    }
+
+    public static Singleton getInstance(){
+        return LazyHolder.INSTANCE;
+    }
+
+}
+```
+
+以上的实现特点是:
+
+- 懒惰实例化
+- 初始化时的线程安全是有保障的
+
+
+# 5. 类加载器 
+
+以JDK8为例子:  
+
+|名称|加载哪的类|说明|
+|----|----|----|
+|Bootstrap ClassLoader|JAVA_HOME/jre/lib|无法直接访问|
+|Extension ClassLoader|JAVA_HOME/jre/lib/ext|上级为Bootstrap,显示为null|
+|Application ClassLoader|classpath|上级为Extension|
+|自定义加载类|自定义|上级为Application|
+
+5.1 启动类加载器
+
+用Bootstrap类加载器加载类:
+
+```java
+public class F {
+    static {
+        System.out.println("bootstrap F init");
+    }
+}
+```
+
+执行
+
+```java
+public class Load5_1 {
+
+    public static void main(String[] args) throws ClassNotFoundException {
+        Class<?> aClass = Class.forName("top.snowlands.F");
+        System.out.println(aClass.getClassLoader());
+    }
+
+}
+```
+
+- _-Xbootclasspath表示设置bootclasspath
+- 其中 /a:表示将当前目录追加至bootclasspath之后
+- 可以用这个办法替换核心类
+  - java -Xbootclasspath:<bew bootclasspath>
+  - java -Xbootclasspath/a:<追加路径>
+  - java -Xbootclasspath/p:<追加路径>
+
+
+5.2 扩展类加载器
+
+代码和上面应一样，代码打jar包放到JAVA_HOME/jre/lib/ext下面
+
+5.3 双亲委派魔术
+
+所谓的双亲委派，就是指调用类加载器的loadClass方法时，查找类的规则
+
+> 注意
+> 这里所谓的双亲，翻译为上级更合适,因为他们没有继承关系
+
+5.4 线程上下文类加载器
+
+我们在使用JDBC时，都需要加载Driver驱动，就算不屑
+```java
+Class.forName("com.mysql.jdbc.Driver")
+```
+也是可以让com.mysql,jdbc.Driver正确加载的
+
+这个类的加载器是Bootstrap ClassLoader，会到JAVA_HOME/jre/lib下搜索类,但JAVA_HOME/jre/lib下显然没有mysql-connector-java-xxxx.jar的包,那么，在DriverManager的静态代码块中，如何正确加载com.mysql.jdbc.Driver呢？
+
+LoadInitialDrivers()方法:
+
+1. 使用SerrviceLoader机制加载驱动
+2. 使用jdbcdrivers定义的驱动名加载驱动
+
+jdk打破了双亲委派模式，会调用应用程序类加载器进行加载
+
+1. 中使用了Service Provider-Interface
+
+约定如下，在jar包的META-INF/service包下，以接口全限定名为文件，文件内容是实现类名称
+
+这样就可以使用
+
+```java
+public class ServiceLoaderDemo {
+
+    public static void main(String[] args) {
+        ServiceLoader<Load4> load = ServiceLoader.load(Load4.class);
+        Iterator<Load4> iterator = load.iterator();
+        while (iterator.hasNext()){
+            iterator.next();//next()已经隐式初始化了
+        }
+    }
+
+}
+```
+
+面向对象+解耦
+
+线程上下文类加载器是当前线程使用的类加载器，默认就是应用程序类加载器，它的内部又是由Class.forName调用了线程上下文类加载器完成加载，具体代码在ServiceLoader的内部类LazyIterator中:
+
+
+5.5 自定义类加载器
+
+什么时候需要自定义类加载器
+
+- 
+
+
+2. 运行期优化
