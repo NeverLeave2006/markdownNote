@@ -2066,7 +2066,371 @@ public class ServiceLoaderDemo {
 
 什么时候需要自定义类加载器
 
-- 
+- 想加载非classpath随意路径中的类文件
+- 都是通过接口来使用实现，希望解耦时，常用在框架设计
+- 这些类希望予以隔离，不同应用的同名类都可以加载，不冲突，常见于tomcat容器
+
+步骤：
+
+1. 继承ClassLoader父类
+2. 要遵从双亲委派1机制，重写findCLass方法
+   - 注意不是重写loadClass方法，否则不会走双亲委派机制
+3. 读取类文件的字节码
+4. 调用父类的defineClass方法来加载类
+5. 使用者调用该类加载器的loadClass方法
+
+示例:
+
+准备好两个类文件放入E:\myclasspath,其实现了两个java.util.Map接口，可以先反编译看下
 
 
-2. 运行期优化
+```java
+public class Load7 {
+
+    public static void main(String[] args) throws Exception {
+        MyClassLoader classLoader = new MyClassLoader();
+        Class<?> c1 = classLoader.loadClass("MapImpl");
+        Class<?> c2 = classLoader.loadClass("MapImpl");
+        System.out.println(c1==c2);//相同
+
+        MyClassLoader classLoader2 = new MyClassLoader();
+        Class<?> c3 = classLoader2.loadClass("MapImpl");
+        System.out.println(c1==c3);//不同,相同包名，类名，相同加载器才相同
+
+        c1.newInstance();
+    }
+
+}
+
+class MyClassLoader extends ClassLoader{
+    /**
+     *
+     * @param name
+     *         The <a href="#name">binary name</a> of the class
+     *
+     * @return
+     * @throws ClassNotFoundException
+     */
+    @Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        String path="E:\\classpath\\"+name+".class";
+
+        try {
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            Files.copy(Paths.get(path),os);
+
+            //得到字节数组
+            byte[] bytes = os.toByteArray();
+
+            //byte[] e->*.class
+            return defineClass(name,bytes,0,bytes.length);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new ClassNotFoundException(e.getMessage());
+        }
+    }
+}
+
+```
+
+## 6. 运行期优化
+
+
+6.1 即时编译
+
+分层编译
+(TieredCimplication)
+
+```java
+public class JIT1 {
+    public static void main(String[] args) {
+        for (int i = 0; i <2000 ; i++) {
+            long start=System.nanoTime();
+            for(int j=0;j<1000;j++){
+                new Object();
+            }
+            long end=System.nanoTime();
+            System.out.println(i+"-"+(end-start) );
+        }
+    }
+}
+```
+
+运行到一定次数后会变快好几倍
+
+原因：
+
+JVM将执行状态分成了5个层次
+
+- 0层，解释执行(Interpreter)
+- 1层，使用C1即时编译器编译执行(不带profiling)
+- 2层，使用C1即时编译器编译执行(带基本的profiling)
+- 3层，使用C1即时编译器编译执行(带完全的profiling)
+- 4层，使用C2即时编译器编译执行
+
+> profiling是指在运行过程中收集一些程序执行状态的数据, 例如【方法的调用此时】,【循环的回边次数】等
+
+即时编译器(JIT)与解释器的区别
+- 解释器是将字节码编译为机器码，下次即时遇到相同的字节码，仍然会执行重复的解释
+- JIT是将一些字节码编译为机器猫，并存入Code Cache,下次遇到相同的代码，直接执行，无需再编译
+- 解释器是将字节码解释为针对所有平台都通用的机器码
+- JIT会根据平台类型,生成平台特定的机器码
+
+对于战机大部分的不常用的代码，我们无需1耗费时间将其编译成机器码，而是采取解释执行的方式运行;另一方面，对于仅占据小部分的热点代码,我们则可以将其编译成机器码，以达到；理想的运行速度。执行效率上简单比较一下`Interpreter<C1<C2`,总的目标是发现热点代码(hotspot名称的由来)，优化之
+
+逃逸分析(C2): 发现新建的对象是否逃逸，循环内创建的对象是否在外层使用到
+-XX: -DoEscapeAnalysis 关闭逃逸分析
+
+方法内联
+
+(Inline)
+
+```java
+    private static int square(final int i){
+        return i*i;
+    }
+    
+    System.out.println(square(9));
+```
+
+如果发现square是热点方法,并且长度不太长时,会进行内联，所谓内联就是把方法内代码拷贝，粘贴到调用者的位置
+
+```java
+System.out.println(square(9*9));
+```
+
+还能够进行常量折叠(constant folding)优化
+
+```java
+System.out.println(81);
+```
+
+实验:
+
+```java
+public class JIT2 {
+
+    public static void main(String[] args) {
+        int x=0;
+        for (int i = 0; i <500 ; i++) {
+            long start=System.nanoTime();
+            for(int j=0;j<1000;j++){
+                x=square(9);
+            }
+            long end=System.nanoTime();
+            System.out.println(i+"-"+x+"-"+(end-start) );
+        }
+    }
+
+    private static int square(final int i){
+        return i*i;
+    }
+}
+```
+
+参数:
+
+-XX:+PrintInlining 展示方法内联
+-XX:CompileCommand=dontinline，*JIT2.square 禁用方法内联
+
+字段优化
+
+JMH基准测试 
+
+```java
+@Warmup(iterations = 2,time = 1)
+@Measurement(iterations = 5,time = 1)
+@State(Scope.Benchmark)
+public class BenchMarkDemo {
+
+    int[] elements=randomInts(1_000);
+
+    private static int[] randomInts(int size){
+        Random random= ThreadLocalRandom.current();
+        int[] values=new int[size];
+        for (int i = 0; i <size ; i++) {
+            values[i]=random.nextInt();
+        }
+        return values;
+    }
+
+    @Benchmark
+    public void test1(){
+        for (int i = 0; i < elements.length; i++) {
+            doSum(elements[i]);
+        }
+    }
+
+    @Benchmark
+    public void test2(){
+        int[] local=this.elements;
+        for (int i = 0; i < elements.length; i++) {
+            doSum(local[i]);
+        }
+    }
+
+    @Benchmark
+    public void test3(){
+        for (int element : elements) {
+            doSum(element);
+        }
+    }
+
+    static int sum=0;
+
+    @CompilerControl(CompilerControl.Mode.INLINE)
+    static void doSum(int x){
+        sum+=x;
+    }
+
+    public static void main(String[] args) throws RunnerException {
+        Options opt = new OptionsBuilder()
+                .include(BenchMarkDemo.class.getSimpleName())
+                .forks(1)
+                .build();
+        new Runner(opt).run();
+    }
+
+}
+```
+
+分析:
+
+doSum方法内联会影响elements成员变量读取的优化:
+
+6.2 反射优化
+
+```java
+public class Refect1 {
+
+    public static void foo(String... args){
+        System.out.println("foo...");
+    }
+
+    public static void main(String[] args) throws Exception {
+        Method foo = Refect1.class.getMethod("foo");
+        for(int i=0;i<16;i++){
+            System.out.println(i);
+            foo.invoke(null);
+        }
+        System.in.read();
+    }
+}
+```
+
+注意:
+
+通过查看ReflectFactory源码可知
+
+- sun.reflect.noInflation可以用来禁用膨胀(直接生成GeneratedMethodAccessor1,但首次生成比较耗时，如果反射仅调用一次，不划算)
+- sun.reflect.inflationThreshold可以修改膨胀阈值
+
+# 内存模型
+
+1. java内存模型
+
+注意和【java内存结构】相区别
+
+可见性，有序性，原子性
+
+1.3  解决方法
+
+synchronized(同步关键字)
+
+语法
+
+```java
+synchronized(对象){
+    要作为原子操作的代码
+}
+```
+
+用synchronzied解决并发问题
+
+
+monitor:
+- Owner 持有线程只能有一个
+- EntryList 阻塞列表monitorexit后进入Owner
+- WaitSet 线程中
+
+1.1 原子性
+
+两个线程对同一个变量分别自增，自减5000次，结果是0吗？->不一定
+
+java 内存模型分为主内存和线程内存
+
+2 可见性
+
+2.1 退不出的循环
+
+```java
+public class Demo4_2 {
+
+    static boolean run=true;
+
+    public static void main(String[] args) throws InterruptedException {
+        Thread t = new Thread(() -> {
+            while (run) {
+
+            }
+        });
+        t.start();
+
+        Thread.sleep(1000);
+        run=false;
+    }
+
+}
+```
+
+1. 初始状态，t线程刚刚开始从主内存读取了run的值到工作内存中。
+
+2. 因为t线程要频繁从主内存中读取run的值，JIT编译器会将run的值缓存至字节工作内存中的告诉缓存中，减少对主存中run的访问，提高效率
+
+3. 1秒后,main线程修改了run的值，并同步至主存，而t是从自己工作内存中的告诉缓存中读取这个变量的值，结果永远是旧值
+
+2.2 解决方法
+
+volatile (易变关键字)
+
+修饰成员变量和静态变量，避免线程从自己的工作缓存中查找变量的值，必须到主存中获取它的值
+
+注意
+
+synchronized语句既可以保证代码块的原子性，也同时保证代码块内变量的可见性。但缺点是synchronized是属于重量级操作，性能相对较低
+
+如果在前面示例的死循环中加入System.out.println()会发现即使不加volatile修饰符,线程t也能正确看到对run变量的修改。->因为打印语句println家里Synchronzied关键字
+
+3. 有序性
+
+3.1 诡异的结果
+
+指令重排，JIT在运行时的一些优化，这个需要大量测试才会复现
+
+3.2 解决方案
+
+使用volatile修饰变量，可以避免指令重排
+
+3.3 有序性的理解
+i和j没有交叉，可能会导致指令重排
+
+jdk5之后volatile才能禁用指令重排
+
+3.4 happens-before
+
+happens-before规定了哪些写操作对其他线程的读操作可见,它是可见性与有序性的一套规则总结:
+
+- 线程**解锁m之前**对变量的写，接下来**对m加锁**的其他线程对改变了的读可见
+
+- 线程**对volatile变量的写**，对接下来**对其他变量的读**可见
+
+- 线程**start前对变量的写**，**对该线程开始后对该变量的读**可见
+
+- 线程t1**打断t2(interrupt)前**对变量的写，对于其他线程得知**t2被打断后**对变量的读可见(通过t2.interrupted或t2.isInterrupted)
+
+- 对变量默认值()0,false,null的写,对其他线程对该变量的读可见
+
+- 具有传递性，如果x hb->y并且yhb ->z那么有x hb ->z
+
+# Cas与原子类
