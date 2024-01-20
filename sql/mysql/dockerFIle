@@ -1,0 +1,50 @@
+# 使用Ubuntu作为基础镜像
+FROM ubuntu:latest
+
+# 替换为阿里云的Ubuntu镜像源
+RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
+RUN apt-get clean
+
+# 设置非交互式前端
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装tzdata包并设置时区为上海
+RUN apt-get update && apt-get install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata
+
+# 安装必要的工具
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libncurses5-dev \
+    libssl-dev \
+    libboost-dev \
+    wget \
+    pkg-config 
+
+# 下载MySQL源码
+RUN wget https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.26.tar.gz
+
+# 下载Boost 1.73压缩包
+RUN wget https://boostorg.jfrog.io/artifactory/main/release/1.73.0/source/boost_1_73_0.tar.gz
+
+# 解压Boost压缩包
+RUN mv boost_1_73_0.tar.gz /usr/local/
+
+# 解压源码
+RUN tar -xvf mysql-8.0.26.tar.gz
+
+# 创建一个新的目录用于构建
+RUN mkdir mysql-build 
+
+# 进入新的构建目录
+WORKDIR mysql-build
+
+# 安装checkinstall
+# 编译MySQL
+RUN cmake -DWITH_BOOST=/usr/local/ ../mysql-8.0.26 && make && make install
+
+# 使用checkinstall创建deb包
+RUN checkinstall --pkgname=mysql --pkgversion="8.0.26" --backup=no \
+    --deldoc=yes --fstrans=no --default

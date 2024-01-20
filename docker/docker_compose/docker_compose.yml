@@ -1,0 +1,9 @@
+version: '3'
+services:
+  ubuntu:
+    image: ubuntu:latest
+    volumes:
+      - ./root:/root
+    ports:
+      - 8022:22
+    command: bash -c "apt-get update && apt-get install -y openssh-server && echo 'root:root' | chpasswd && /usr/sbin/sshd -D"
