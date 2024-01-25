@@ -46,7 +46,7 @@ pip install <package_name>
 openssh没法用，用dropbear！
 
 ```shell
-dropbear -FE -p 2222 
+dropbear -FE -p 18022 
 ```
 
 # wget无法下载https解决
