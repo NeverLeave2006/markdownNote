@@ -119,3 +119,45 @@ sudo make install
 sudo apt-get install pkg-config
 
 ```
+
+
+安装pandas
+
+```shell
+pkg install tur-repo
+
+pkg install python-numpy
+
+pkg install python-pandas
+```
+
+安装jupyter
+
+```shell
+pkg install -y libzmq libcrypt pkg-config
+
+pip install clang
+
+pip install ipython
+
+pip install jupyter
+
+#使用
+jupyter notebook
+```
+
+Matplotlib安装：
+
+```shell
+#1、安装pillow依赖项
+
+pkg install -y libjpeg-turbo libtiff
+
+pip install pillow
+
+#2、安装matplotlib依赖项
+
+pkg install -y freetype libpng
+
+pkg install matplotlib
+```
