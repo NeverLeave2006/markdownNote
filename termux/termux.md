@@ -43,11 +43,28 @@ pip install <package_name>
 
 # ssh
 
-openssh没法用，用dropbear！
+如果openssh没法用，用dropbear！
 
 ```shell
 dropbear -FE -p 18022 
 ```
+
+
+# openssh开启x11-forward
+
+/etc/ssh/sshd_config
+```sshd_config
+AllowTcpForwarding yes
+X11Forwarding yes
+```
+
+```shell
+pkg install  xorg-xauth xorg-xclock
+
+// 测试
+xclock
+```
+
 
 # wget无法下载https解决
 
@@ -57,7 +74,7 @@ sudo update-ca-certificates
 ```
 
 # 编译安装boost
-
+            
 ```shell
 
 sudo apt-get install build-essential g++ python-dev autotools-dev libicu-dev build-essential libbz2-dev libboost-all-dev
@@ -79,7 +96,7 @@ sudo ./b2 install
 ```shell
 # 下载对应版本
 wget https://www.openssl.org/source/openssl-1.1.1.tar.gz
-wget https://www.openssl.org/source/openssl-1.1.1k.tar.gz
+ 
 wget https://www.openssl.org/source/openssl-1.1.1l.tar.gz
 
 tar -xzvf openssl-1.1.1.tar.gz
@@ -131,12 +148,12 @@ pkg install python-numpy
 pkg install python-pandas
 ```
 
-安装jupyter
+安装jupyter  
 
 ```shell
 pkg install -y libzmq libcrypt pkg-config
 
-pip install clang
+pip install clang 
 
 pip install ipython
 
@@ -161,3 +178,4 @@ pkg install -y freetype libpng
 
 pkg install matplotlib
 ```
+
